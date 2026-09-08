@@ -1,5 +1,7 @@
 # Adaptive Equal Earth demo
 
+[Open the live demo](https://maplibre-gl-js-equal-earth.pages.dev/)
+
 An experimental MapLibre GL JS build with adaptive Equal Earth, OpenFreeMap Liberty, hillshade, and terrain that rises smoothly after the map transitions to Mercator.
 
 Use **World** for the Equal Earth overview and **Alps · 3D** to fly into the mountains. You can also zoom and move the map normally.
@@ -10,7 +12,15 @@ The repository contains a static demo and the compiled MapLibre runtime. The sty
 
 ## Hosting
 
-For GitHub Pages, publish the root of the `main` branch. For Cloudflare Pages, use no framework, no build command, and `.` as the output directory.
+The live demo is hosted on Cloudflare Pages. This GitHub repository stays private. Deployments use Direct Upload, so pushing a commit alone does not update the site.
+
+After signing in with `npx wrangler login`, deploy with:
+
+```sh
+node deploy.mjs
+```
+
+The script uploads the demo HTML, compiled runtime, license, and build metadata. It stages those files in a temporary directory and removes it afterward.
 
 To run locally, serve this directory over HTTP, for example with `python3 -m http.server 8080`, then visit `http://localhost:8080`.
 
