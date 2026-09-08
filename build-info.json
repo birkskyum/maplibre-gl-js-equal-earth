@@ -1,0 +1,11 @@
+{
+  "maplibreBaseCommit": "73a39c4460e53f720d12f001b5b2c4c4e0d8cabc",
+  "styleSpecBaseCommit": "187f3c3633a9dd5b37148c1ca2686b438f8f7946",
+  "includesUncommittedEqualEarthChanges": true,
+  "sha256": {
+    "dist/maplibre-gl-shared.mjs": "b288e1c78af4394dcf7107c2787fbbb3c269ebfac78b8f0d8d94913c7c1f8c45",
+    "dist/maplibre-gl-worker.mjs": "0f22568ac9b18a3eaf5c3682c488c01309ba9e9e1a694679b04076d7716d9753",
+    "dist/maplibre-gl.css": "8e2dbbab312dc57656fbb76e9fa5308c75c9d7c7ba5808a7d55bcdb64cc813fa",
+    "dist/maplibre-gl.mjs": "2fd5916eb764999ecb4c0be5752b58f66da57af90386abd3717ab0fa3acd5cfe"
+  }
+}
