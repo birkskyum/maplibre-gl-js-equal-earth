@@ -1,5 +1,8 @@
 # Adaptive Equal Earth demo
 
+<img width="1612" height="763" alt="Screenshot 2026-09-09 at 21 50 20" src="https://github.com/user-attachments/assets/e99e8e26-98b9-44a4-97f0-9de84e387d49" />
+
+
 [Open the live demo](https://maplibre-gl-js-equal-earth.pages.dev/)
 
 An experimental MapLibre GL JS build with adaptive Equal Earth, OpenFreeMap Liberty, hillshade, and terrain that rises smoothly after the map transitions to Mercator.
