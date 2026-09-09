@@ -5,6 +5,7 @@ import {getMaximumPaintValue, translateDistance, translate, offsetLine} from '..
 import properties, {type LineLayoutPropsPossiblyEvaluated, type LinePaintPropsPossiblyEvaluated} from './line_style_layer_properties.g.ts';
 import {extend} from '../../util/util.ts';
 import {EvaluationParameters} from '../evaluation_parameters.ts';
+import {subdivideVertexLine} from '../../render/subdivision.ts';
 import {type Transitionable, type Transitioning, type Layout, type PossiblyEvaluated, DataDrivenProperty, type PossiblyEvaluatedPropertyValue} from '../properties.ts';
 
 import {isZoomExpression, Step, type Feature, type FeatureState, type StylePropertyExpression} from '@maplibre/maplibre-gl-style-spec';
@@ -97,8 +98,14 @@ export class LineStyleLayer extends StyleLayer {
         featureState,
         geometry,
         transform,
+        unwrappedTileID,
         pixelsToTileUnits}: QueryIntersectsFeatureParams
     ): boolean {
+        if (transform.projectTileCoordinatesToPlane) {
+            const project = point => transform.projectTileCoordinatesToPlane(point.x, point.y, unwrappedTileID);
+            queryGeometry = queryGeometry.map(project);
+            geometry = geometry.map(line => subdivideVertexLine(line, Math.max(512 >> unwrappedTileID.canonical.z, 1)).map(project));
+        }
         const translatedPolygon = translate(queryGeometry,
             this.paint.get('line-translate'),
             this.paint.get('line-translate-anchor'),

@@ -206,6 +206,20 @@ There are also additional presets that yield commonly used expressions:
 |--------|------------|-------------|
 | `globe` | `["interpolate", ["linear"], ["zoom"],`<br>`10, "vertical-perspective", 12, "mercator"]` | Adaptive globe: interpolates from vertical-perspective to mercator projection between zoom levels 10 and 12. |
 
+#### Adaptive Equal Earth
+
+MapLibre GL JS also supports the named adaptive `equal-earth` projection:
+
+```json
+{
+  "projection": { "type": "equal-earth" }
+}
+```
+
+It displays the spherical Equal Earth projection through zoom 6, preserving relative areas at world scale. Between zoom 6 and 7 it interpolates linearly to Mercator while keeping the camera center fixed. At zoom 7 and above it uses Mercator, including Mercator's terrain support. Intermediate blends are not equal-area.
+
+Equal Earth displays one world while active; the `renderWorldCopies` setting takes effect again when the transition to Mercator is complete. Terrain interaction is supported after the transition. This is a named adaptive projection, not an endpoint for `interpolate` or `step` expressions. It is not yet implemented in MapLibre Native.
+
 
 ## `numberArray`
 

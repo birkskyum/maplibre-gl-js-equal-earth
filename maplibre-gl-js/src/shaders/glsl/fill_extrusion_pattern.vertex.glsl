@@ -82,7 +82,7 @@ void main() {
         v_sphere_pos = elevatedPos;
         gl_Position = interpolateProjectionFor3D(posInTile, spherePos, elevation);
     #else
-        gl_Position = u_projection_matrix * vec4(posInTile, elevation, 1.0);
+        gl_Position = projectTileFor3D(posInTile, elevation);
     #endif
 
     vec2 pos = a_normal_ed.x == 1 && a_normal_ed.y == 0 && a_normal_ed.z == 16384

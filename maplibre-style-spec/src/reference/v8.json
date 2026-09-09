@@ -6450,7 +6450,7 @@
   "projection": {
     "type": {
       "type": "projectionDefinition",
-      "doc": "The projection definition type. Can be specified as a string, a transition state, or an expression.",
+      "doc": "The projection definition type. Can be specified as a string, a transition state, or an expression. The named adaptive projections are `globe` and `equal-earth`. In MapLibre GL JS, `equal-earth` displays an Equal Earth world map through zoom 6, transitions linearly to Mercator between zoom 6 and 7, and uses Mercator from zoom 7 onward. Use `equal-earth` as a named projection, rather than as an endpoint in a projection expression.",
       "default": "mercator",
       "property-type": "data-constant",
       "transition": false,

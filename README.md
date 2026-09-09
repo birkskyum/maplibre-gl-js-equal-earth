@@ -8,7 +8,39 @@ Use **World** for the Equal Earth overview and **Alps · 3D** to fly into the mo
 
 Equal Earth transitions to Mercator at zoom 6-7. Terrain grows from flat to full height at zoom 7-9. This prototype does not implement the proposed configurable projection transition API.
 
-The repository contains a static demo and the compiled MapLibre runtime. The style-spec changes are included in the runtime bundle. No build step, backend, or API key is needed to host it.
+The repository contains the full MapLibre GL JS and style-spec source snapshots with the Equal Earth changes, plus the static demo and compiled runtime. The existing demo can be hosted without a build step, backend, or API key.
+
+## Source and feature diff
+
+- [MapLibre GL JS source](maplibre-gl-js/), including projection code, shaders, tests, and render fixtures.
+- [Style-spec source](maplibre-style-spec/), including the Equal Earth documentation and validation tests.
+- [Review the Equal Earth changes](https://github.com/birkskyum/maplibre-gl-js-equal-earth/compare/6e0ad2d990e3857f2a742b5957b2611f79f061d5...main).
+
+The upstream source snapshots were imported in a separate baseline commit, followed by the feature changes. [source-info.json](source-info.json) records the original upstream commits. Each source directory retains its own license.
+
+## Build from source
+
+Use Node.js 26, as specified by the GL JS checkout. Run these commands from the repository root to build style-spec and link it into GL JS:
+
+```sh
+cd maplibre-style-spec
+npm ci
+npm run build
+cd ../maplibre-gl-js
+npm ci
+rm -rf node_modules/@maplibre/maplibre-gl-style-spec
+ln -s ../../../maplibre-style-spec node_modules/@maplibre/maplibre-gl-style-spec
+npm run codegen
+npm run build-dist
+```
+
+The removal above replaces the installed registry package with the sibling source checkout. The resulting runtime files are in `maplibre-gl-js/dist/`.
+
+After building, run the GL JS render suite from `maplibre-gl-js/` with:
+
+```sh
+RENDER_TEST_CONCURRENCY=12 npm run test-render -- --run
+```
 
 ## Hosting
 
@@ -26,7 +58,7 @@ To run locally, serve this directory over HTTP, for example with `python3 -m htt
 
 ## Updating the demo
 
-Run `npm run build-dist` in the Equal Earth MapLibre GL JS feature checkout, with its sibling style-spec changes linked. Copy `test/examples/display-an-equal-earth-map.html` to `index.html`, change its CSS and module imports to `./dist/maplibre-gl.css` and `./dist/maplibre-gl.mjs`, and copy the four runtime files in `dist/`. Keep `LICENSE.txt` alongside them.
+Build the sources as described above. Copy `maplibre-gl-js/test/examples/display-an-equal-earth-map.html` to the root `index.html`, change its CSS and module imports to `./dist/maplibre-gl.css` and `./dist/maplibre-gl.mjs`, and copy `maplibre-gl.css`, `maplibre-gl.mjs`, `maplibre-gl-shared.mjs`, and `maplibre-gl-worker.mjs` from `maplibre-gl-js/dist/` to the root `dist/`. Keep `LICENSE.txt` alongside them.
 
 ## Credits
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Display an adaptive Equal Earth map</title>
+    <meta property="og:description" content="Display an Equal Earth world map that transitions to Mercator as you zoom in." />
+    <meta property="og:category" content="Styles" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../../dist/maplibre-gl.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+        #description { position: absolute; top: 12px; left: 12px; max-width: calc(100% - 90px); padding: 12px; background: white; font: 14px sans-serif; border-radius: 4px; }
+        #controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+        button { padding: 6px 10px; cursor: pointer; }
+        #terrain-status { display: block; margin-top: 8px; color: #555; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="description">
+    OpenFreeMap Liberty · Adaptive Equal Earth
+    <div id="controls">
+        <button id="world">World</button>
+        <button id="alps">Alps · 3D</button>
+        <label><input id="terrain" type="checkbox" checked> Terrain</label>
+    </div>
+    <span id="terrain-status">Loading terrain…</span>
+</div>
+<script type="module">
+    import * as maplibregl from '../../dist/maplibre-gl-dev.mjs';
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [0, 0],
+        zoom: 1,
+        maxPitch: 85
+    });
+    const terrainToggle = document.getElementById('terrain');
+    const terrainStatus = document.getElementById('terrain-status');
+
+    /** Grows terrain smoothly from flat at zoom 7 to full height at zoom 9, after reaching Mercator. */
+    function updateTerrain() {
+        if (!map.getSource('terrain')) return;
+        const enabled = terrainToggle.checked && map.getZoom() >= 7;
+        const t = Math.max(0, Math.min(1, (map.getZoom() - 7) / 2));
+        const exaggeration = 1.3 * t * t * (3 - 2 * t);
+        const current = map.getTerrain();
+        if (enabled && current?.exaggeration !== exaggeration) {
+            map.setTerrain({source: 'terrain', exaggeration});
+        } else if (!enabled && current) {
+            map.setTerrain(null);
+        }
+        terrainStatus.textContent = !terrainToggle.checked ? 'Hillshade · 3D terrain off'
+            : enabled ? `3D terrain · ${exaggeration.toFixed(2)}× elevation` : 'Hillshade · terrain rises smoothly from zoom 7 to 9';
+    }
+
+    map.on('style.load', () => {
+        map.setProjection({type: 'equal-earth'});
+        map.addSource('terrain', {type: 'raster-dem', url: 'https://tiles.mapterhorn.com/tilejson.json'});
+        map.addSource('hillshade', {type: 'raster-dem', url: 'https://tiles.mapterhorn.com/tilejson.json'});
+        const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol');
+        map.addLayer({
+            id: 'terrain-hillshade',
+            type: 'hillshade',
+            source: 'hillshade',
+            paint: {
+                'hillshade-shadow-color': '#473b24',
+                'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 0, 0.25, 6, 0.35]
+            }
+        }, firstSymbol?.id);
+        map.setSky({});
+        updateTerrain();
+    });
+    map.on('zoom', updateTerrain);
+    terrainToggle.addEventListener('change', updateTerrain);
+    document.getElementById('world').addEventListener('click', () => {
+        map.flyTo({center: [0, 0], zoom: 1, pitch: 0, bearing: 0, duration: 2500});
+    });
+    document.getElementById('alps').addEventListener('click', () => {
+        terrainToggle.checked = true;
+        map.flyTo({center: [11.39085, 47.27574], zoom: 12, pitch: 65, bearing: -20, duration: 2500});
+        updateTerrain();
+    });
+    map.addControl(new maplibregl.NavigationControl({visualizePitch: true}));
+</script>
+</body>
+</html>

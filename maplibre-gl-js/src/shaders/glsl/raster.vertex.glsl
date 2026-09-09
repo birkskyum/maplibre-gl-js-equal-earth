@@ -40,7 +40,7 @@ void main() {
     vec2 texturePos = ((fractionalPos - 0.5) / u_buffer_scale) + 0.5;
 
      // When globe rendering is enabled, pole vertices need special handling to get nice texture coordinates.
-    #ifdef GLOBE
+    #if defined GLOBE || defined EQUAL_EARTH
     // North pole
     if (a_pos.y < -32767.5) {
         texturePos.y = 0.0;

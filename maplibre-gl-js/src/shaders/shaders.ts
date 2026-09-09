@@ -67,6 +67,7 @@ import projectionMercatorVert from './glsl/_projection_mercator.vertex.glsl.g.ts
 import projectionMercatorFrag from './glsl/_projection_mercator.fragment.glsl.g.ts';
 import projectionGlobeVert from './glsl/_projection_globe.vertex.glsl.g.ts';
 import projectionGlobeFrag from './glsl/_projection_globe.fragment.glsl.g.ts';
+import projectionEqualEarthVert from './glsl/_projection_equal_earth.vertex.glsl.g.ts';
 import atmosphereFrag from './glsl/atmosphere.fragment.glsl.g.ts';
 import atmosphereVert from './glsl/atmosphere.vertex.glsl.g.ts';
 import skyFrag from './glsl/sky.fragment.glsl.g.ts';
@@ -83,6 +84,7 @@ export const shaders: {
     prelude: PreparedShader;
     projectionMercator: PreparedShader;
     projectionGlobe: PreparedShader;
+    projectionEqualEarth: PreparedShader;
     background: PreparedShader;
     backgroundPattern: PreparedShader;
     circle: PreparedShader;
@@ -120,6 +122,7 @@ export const shaders: {
     prelude: prepare(preludeFrag, preludeVert),
     projectionMercator: prepare(projectionMercatorFrag, projectionMercatorVert),
     projectionGlobe: prepare(projectionGlobeFrag, projectionGlobeVert),
+    projectionEqualEarth: prepare(projectionGlobeFrag, projectionEqualEarthVert),
     background: prepare(backgroundFrag, backgroundVert),
     backgroundPattern: prepare(backgroundPatternFrag, backgroundPatternVert),
     circle: prepare(circleFrag, circleVert),
@@ -260,4 +263,3 @@ uniform ${precision} ${type} u_${name};
 
     return {fragmentSource, vertexSource, staticAttributes: vertexAttributes, staticUniforms: shaderUniforms};
 }
-

@@ -70,6 +70,28 @@ describe('setTerrain', () => {
         expect(map.getTerrain()).toEqual({source: 'dem', exaggeration: 2});
     });
 
+    test('reuses terrain when changing exaggeration, including zero and the default', async () => {
+        await map.once('style.load');
+        map.addSource('dem', {type: 'raster-dem', tiles: ['http://example.com/{z}/{x}/{y}.png'], tileSize: 256});
+        map.setTerrain({source: 'dem', exaggeration: 0});
+        const terrain = map.terrain;
+        const terrainEvents = vi.fn();
+        map.on('terrain', terrainEvents);
+
+        for (const exaggeration of [0.65, 1.3, 0, undefined]) {
+            const options = exaggeration === undefined ? {source: 'dem'} : {source: 'dem', exaggeration};
+            map.setTerrain(options);
+
+            expect(map.terrain).toBe(terrain);
+            expect(map.getTerrain()).toEqual(options);
+            expect(map.terrain.exaggeration).toBe(exaggeration ?? 1);
+            expect(terrainEvents).toHaveBeenLastCalledWith(expect.objectContaining({terrain: options}));
+        }
+
+        map.setTerrain(null);
+        expect(map.getTerrain()).toBeNull();
+    });
+
     test('drops the previous source attribution when switching terrain to a new source', async () => {
         const attribution = new AttributionControl();
         map.addControl(attribution);

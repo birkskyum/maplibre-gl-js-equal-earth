@@ -66,6 +66,8 @@ void main(void) {
         vec2 angles = extrude * angle_scale;
         vec3 corner_vector = globeRotateVector(center_vector, angles);
         gl_Position = interpolateProjection(corner_position, corner_vector, ele);
+#elif defined EQUAL_EARTH
+        gl_Position = projectPlanarTile(projectTileToPlane(circle_center) + corner_position - circle_center, ele);
 #else
         gl_Position = projectTileWithElevation(corner_position, ele);
 #endif

@@ -52,7 +52,7 @@ void main() {
         vec3 spherePos = projectToSphere(posInTile, a_pos);
         gl_Position = interpolateProjectionFor3D(posInTile, spherePos, elevation);
     #else
-        gl_Position = u_projection_matrix * vec4(posInTile, elevation, 1.0);
+        gl_Position = projectTileFor3D(posInTile, elevation);
     #endif
 
     // Relative luminance (how dark/bright is the surface color?)

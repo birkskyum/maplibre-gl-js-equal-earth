@@ -172,3 +172,15 @@ vec4 projectTileFor3D(vec2 posInTile, float elevation) {
     vec3 spherePos = projectToSphere(posInTile, posInTile);
     return interpolateProjectionFor3D(posInTile, spherePos, elevation);
 }
+
+vec2 projectTileToPlane(vec2 pos) {
+    return pos;
+}
+
+vec4 projectPlanarTile(vec2 pos, float elevation) {
+    return projectTileWithElevation(pos, elevation);
+}
+
+vec4 projectLineTile(vec2 pos, vec2 extrusion) {
+    return projectTile(pos + extrusion);
+}

@@ -127,7 +127,7 @@ void main() {
         // Label plane matrix is identity in this case
         projected_pos = vec4(a_projected_pos.xy, ele, 1.0);
     } else if (u_pitch_with_map) {
-        projected_pos = u_label_plane_matrix * vec4(a_projected_pos.xy + u_translation, ele, 1.0);
+        projected_pos = u_label_plane_matrix * vec4(projectTileToPlane(a_projected_pos.xy + u_translation), ele, 1.0);
     } else {
         projected_pos = u_label_plane_matrix * projectTileWithElevation(a_projected_pos.xy + u_translation, ele);
     }
@@ -144,7 +144,7 @@ void main() {
 
     vec4 finalPos = u_coord_matrix * vec4(projected_pos.xy / projected_pos.w + rotation_matrix * (a_offset / 32.0 * max(a_minFontScale, fontScale) + a_pxoffset) * projectionScaling, z, 1.0);
     if(u_pitch_with_map) {
-        finalPos = projectTileWithElevation(finalPos.xy, finalPos.z);
+        finalPos = projectPlanarTile(finalPos.xy, finalPos.z);
     }
     float gamma_scale = finalPos.w;
     gl_Position = finalPos;

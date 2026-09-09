@@ -107,14 +107,16 @@ type CircleIntersectionTestParams = {
     pitchScale?: 'map' | 'viewport';
 };
 
-function intersectionTestMapMap({queryGeometry, size}: CircleIntersectionTestParams, point: Point): boolean {
-    return polygonIntersectsBufferedPoint(queryGeometry, point, size);
+function intersectionTestMapMap({queryGeometry, size, transform, unwrappedTileID}: CircleIntersectionTestParams, point: Point): boolean {
+    const projected = transform.projectTileCoordinatesToPlane?.(point.x, point.y, unwrappedTileID) ?? point;
+    return polygonIntersectsBufferedPoint(queryGeometry, projected, size);
 }
 
 function intersectionTestMapViewport({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {
     const w = transform.projectTileCoordinates(point.x, point.y, unwrappedTileID, getElevation?.(point.x, point.y)).signedDistanceFromCamera;
     const adjustedSize = size * (w / transform.cameraToCenterDistance);
-    return polygonIntersectsBufferedPoint(queryGeometry, point, adjustedSize);
+    const projected = transform.projectTileCoordinatesToPlane?.(point.x, point.y, unwrappedTileID) ?? point;
+    return polygonIntersectsBufferedPoint(queryGeometry, projected, adjustedSize);
 }
 
 function intersectionTestViewportMap({queryGeometry, size, transform, unwrappedTileID, getElevation}: CircleIntersectionTestParams, point: Point): boolean {

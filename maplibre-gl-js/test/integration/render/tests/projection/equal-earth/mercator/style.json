@@ -1,0 +1,149 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "width": 512,
+      "height": 384
+    }
+  },
+  "projection": {
+    "type": "equal-earth"
+  },
+  "center": [
+    30,
+    60
+  ],
+  "zoom": 7,
+  "pitch": 35,
+  "bearing": 20,
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "features": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    29,
+                    59.5
+                  ],
+                  [
+                    31,
+                    59.5
+                  ],
+                  [
+                    31,
+                    60.5
+                  ],
+                  [
+                    29,
+                    60.5
+                  ],
+                  [
+                    29,
+                    59.5
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "label": "Equal Earth"
+            },
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                30,
+                60
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#dbeaf0"
+      }
+    },
+    {
+      "id": "fill",
+      "type": "fill",
+      "source": "features",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "#d58b53"
+      }
+    },
+    {
+      "id": "outline",
+      "type": "line",
+      "source": "features",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "line-color": "#102e42",
+        "line-width": 3
+      }
+    },
+    {
+      "id": "circle",
+      "type": "circle",
+      "source": "features",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "paint": {
+        "circle-color": "#963f38",
+        "circle-radius": 8
+      }
+    },
+    {
+      "id": "labels",
+      "type": "symbol",
+      "source": "features",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "layout": {
+        "text-field": "{label}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 20,
+        "text-offset": [
+          0,
+          1.2
+        ]
+      },
+      "paint": {
+        "text-color": "#102e42"
+      }
+    }
+  ]
+}

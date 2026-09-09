@@ -1,5 +1,6 @@
 ## main
 ### ✨ Features and improvements
+- Define the adaptive `equal-earth` projection, which transitions to Mercator between zoom 6 and 7 in GL JS ([maplibre-gl-js#8330](https://github.com/maplibre/maplibre-gl-js/issues/8330)).
 - Allow negative `fill-extrusion-base` and `fill-extrusion-height` values, extruding below ground level (e.g. underground floors) ([maplibre-gl-js#8051](https://github.com/maplibre/maplibre-gl-js/issues/8051)) (by [@clement-igonet](https://github.com/clement-igonet))
 - Add SDK support tracking for SDF fill pattern colorization ([#1683](https://github.com/maplibre/maplibre-style-spec/pull/1683)) (by [@deniial00](https://github.com/deniial00))
 - _...Add new stuff here..._

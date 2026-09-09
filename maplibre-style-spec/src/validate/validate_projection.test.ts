@@ -70,10 +70,10 @@ describe('Validate projection', () => {
         expect(errors).toHaveLength(0);
     });
 
-    test('Should pass string value', () => {
+    test.each(['mercator', 'globe', 'equal-earth'])('Should pass named projection %s', (type) => {
         const errors = validateProjection({
             validateSpec: validate,
-            value: {type: 'mercator'},
+            value: {type},
             styleSpec: v8,
             style: {} as any
         });

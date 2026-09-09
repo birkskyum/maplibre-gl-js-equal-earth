@@ -511,6 +511,15 @@ export interface IReadonlyTransform extends ITransformGetters {
     getPitchedTextCorrection(textAnchorX: number, textAnchorY: number, tileID: UnwrappedTileID): number;
 
     /**
+     * Optionally projects a tile position into a planar projection's label coordinates, in tile units.
+     * Layout in this plane preserves glyph proportions in projections with nonuniform geographic scale.
+     */
+    projectTileCoordinatesToPlane?(x: number, y: number, tileID: UnwrappedTileID): Point;
+
+    /** Projects a position in the pitched text plane to clip space after glyph offsets have been applied. */
+    projectPlanarTileCoordinates?(x: number, y: number, tileID: UnwrappedTileID, elevation?: number): PointProjection;
+
+    /**
      * @internal
      * Returns light direction transformed to be in the same space as 3D features under this projection. Mostly used for globe + fill-extrusion.
      * @param transform - Current map transform.
@@ -543,4 +552,3 @@ export interface IReadonlyTransform extends ITransformGetters {
  * A transform is cloneable, which is used when a given map state must be retained for multiple frames, mostly during symbol placement.
  */
 export interface ITransform extends IReadonlyTransform, ITransformMutators {}
-

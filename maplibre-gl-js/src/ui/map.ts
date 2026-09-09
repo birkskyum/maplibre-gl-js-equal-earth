@@ -852,7 +852,8 @@ export class Map extends Evented<MapEventType> {
         // When no style is set or it's using something other than the globe projection, we can constrain the camera.
         // When a style is set with other projections though, we can't constrain the camera until the style is loaded
         // and the correct transform is used. Otherwise, valid points in the desired projection could be rejected
-        const shouldConstrainUsingMercatorTransform = typeof resolvedOptions.style === 'string' || !(resolvedOptions.style?.projection?.type === 'globe');
+        const shouldConstrainUsingMercatorTransform = typeof resolvedOptions.style === 'string' ||
+            !['globe', 'equal-earth'].includes(resolvedOptions.style?.projection?.type as string);
         this.resize(null, shouldConstrainUsingMercatorTransform);
 
         this._localIdeographFontFamily = resolvedOptions.localIdeographFontFamily;
@@ -2922,6 +2923,8 @@ export class Map extends Evented<MapEventType> {
 
     /**
      * Loads a 3D terrain mesh, based on a "raster-dem" source.
+     * Updating exaggeration for the same source reuses the terrain mesh and textures.
+     * During a gesture or flight, the camera retains control of its elevation.
      *
      * Triggers the `terrain` event.
      *
@@ -2969,14 +2972,19 @@ export class Map extends Evented<MapEventType> {
                     warnOnce('You are using the same source for a color-relief layer and for 3D terrain. Please consider using two separate sources to improve rendering quality.');
                 }
             }
-            if (this.terrain) {
-                this.terrain.destroy();
+            if (this.terrain?.options.source === options.source) {
+                this.terrain.options = options;
+                this.terrain.exaggeration = options.exaggeration ?? 1;
+            } else {
+                this.terrain?.destroy();
+                this.terrain = new Terrain(this.painter, tileManager, options, this._terrainSkirtLength);
+                this.painter.renderToTexture = new RenderToTexture(this.painter, this.terrain);
+                this._camera.terrain = this.terrain;
             }
-            this.terrain = new Terrain(this.painter, tileManager, options, this._terrainSkirtLength);
-            this.painter.renderToTexture = new RenderToTexture(this.painter, this.terrain);
-            this._camera.terrain = this.terrain;
             this._camera.transform.setMinElevationForCurrentTile(this.terrain.getMinTileElevationForLngLatZoom(this._camera.transform.center, this._camera.transform.tileZoom));
-            this._camera.transform.setElevation(this.terrain.getElevationForLngLat(this._camera.transform.center, this._camera.transform));
+            if (!this._camera.elevationFreeze && this.getCenterClampedToGround()) {
+                this._camera.transform.setElevation(this.terrain.getElevationForLngLat(this._camera.transform.center, this._camera.transform));
+            }
             this._terrainDataCallback = e => this._handleTerrainDataEvent(e, options.source);
             this.style.on('data', this._terrainDataCallback);
         }
