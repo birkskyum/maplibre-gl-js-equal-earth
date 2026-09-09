@@ -1,0 +1,120 @@
+{
+  "version": 8,
+  "sources": {
+    "missing-type": {
+    },
+    "invalid-type": {
+      "type": "invalid"
+    },
+    "no-tilejson-properties-with-url": {
+      "type": "vector",
+      "url": "http://example.com",
+      "tiles": []
+    },
+    "no-unknown-properties-with-url": {
+      "type": "vector",
+      "url": "http://example.com",
+      "foo": 1
+    },
+    "video-valid": {
+      "type": "video",
+      "urls": [],
+      "coordinates": [
+        [1, 2], [3, 4], [5, 6], [7, 8]
+      ]
+    },
+    "video-missing-coordinates": {
+      "type": "video",
+      "urls": []
+    },
+    "video-wrong-coordinates": {
+      "type": "video",
+      "urls": [],
+      "coordinates": [
+        1, "2", [3, "4"], []
+      ]
+    },
+    "canvas": {
+      "type": "canvas",
+      "canvas": "canvas",
+      "coordinates": [
+        [1, 2], [3, 4], [5, 6], [7, 8]
+      ]
+    },
+    "cluster-properties": {
+      "type": "geojson",
+      "data": "/test/integration/data/places.geojson",
+      "cluster": true,
+      "clusterProperties": {
+        "zoom": ["+", ["zoom"]],
+        "state": ["+", ["feature-state", "foo"]]
+      }
+    },
+    "__proto__in-dot-separated-key-name-does-not-crash": {
+      "type": "raster",
+      "mazoom": 10,
+      "tileSize": 256,
+      "tiles": ["http://example.com/{x}/{y}/{z}.png"],
+      "__proto__.__proto__": 123
+    },
+    "key-names-with-object-prototype-methods-do-not-crash": {
+      "type": "raster",
+      "mazoom": 10,
+      "tileSize": 256,
+      "tiles": ["http://example.com/{x}/{y}/{z}.png"],
+      "valueOf": null,
+      "toLocaleString": 6
+    },
+    "source-vector-default": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json"
+    },
+    "source-vector-mvt": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": "mvt"
+    },
+    "source-vector-mlt-tilejson": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": "mlt"
+    },
+    "source-vector-mlt-tiles": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles/{z}/{x}/{y}.mlt",
+      "encoding": "mlt"
+    },
+    "source-vector-custom": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": "custom"
+    },
+    "source-vector-blank": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": ""
+    },
+    "source-vector-numeric": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": 3
+    },
+    "source-vector-array": {
+      "type": "vector",
+      "url": "https://demotiles.maplibre.org/tiles/tiles.json",
+      "encoding": [
+        "mvt"
+      ]
+    },
+    "image-no-url": {
+      "type": "image",
+      "coordinates": [
+        [1, 2], [3, 4], [5, 6], [7, 8]
+      ]
+    },
+    "image-missing-coordinates": {
+      "type": "image"
+    }
+  },
+  "layers": []
+}

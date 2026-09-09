@@ -1,0 +1,12 @@
+{
+  "repositories": {
+    "maplibre-gl-js": {
+      "upstream": "https://github.com/maplibre/maplibre-gl-js",
+      "baseCommit": "73a39c4460e53f720d12f001b5b2c4c4e0d8cabc"
+    },
+    "maplibre-style-spec": {
+      "upstream": "https://github.com/maplibre/maplibre-style-spec",
+      "baseCommit": "187f3c3633a9dd5b37148c1ca2686b438f8f7946"
+    }
+  }
+}

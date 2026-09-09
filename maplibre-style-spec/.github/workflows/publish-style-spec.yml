@@ -1,0 +1,18 @@
+name: Publish to NPM
+
+permissions:
+  id-token: write  # Required for trusted publishing
+  contents: write
+  attestations: write
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    uses: maplibre/reusable-workflows/.github/workflows/npm-publish.yml@main
+    with:
+      build-command: npm ci && npm run generate-style-spec && npm run generate-typings && npm run build
+      docs-output-dir: site

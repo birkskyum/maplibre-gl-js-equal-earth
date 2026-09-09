@@ -1,0 +1,31 @@
+name: Bundle Size Report
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  bundle-size:
+    name: Bundle Size Report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Report bundle sizes
+        uses: preactjs/compressed-size-action@f322c295dde06a1cb7ccaef105732dd8a726d1d9 # 2.10.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: 'dist/index.{mjs,cjs}'
