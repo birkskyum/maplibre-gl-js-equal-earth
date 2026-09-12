@@ -694,13 +694,16 @@ export class MercatorTransform implements ITransform {
         this._helper._nearZ = this._helper._height / 50;
     }
 
+    /** Geographic reference used to position the planar camera. */
+    protected get cameraCenter(): LngLat { return this.center; }
+
     _calcMatrices(): void {
         if (!this._helper._height) return;
 
         const offset = this.centerOffset;
-        const point = projectToWorldCoordinates(this.worldSize, this.center);
+        const point = projectToWorldCoordinates(this.worldSize, this.cameraCenter);
         const x = point.x, y = point.y;
-        this._helper._pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        this._helper._pixelPerMeter = mercatorZfromAltitude(1, this.cameraCenter.lat) * this.worldSize;
 
         // Calculate the camera to sea-level distance in pixel in respect of terrain
         const limitedPitchRadians = degreesToRadians(Math.min(this.pitch, maxMercatorHorizonAngle));
@@ -815,7 +818,7 @@ export class MercatorTransform implements ITransform {
     }
 
     getCameraLngLat(): LngLat {
-        const pixelPerMeter = mercatorZfromAltitude(1, this.center.lat) * this.worldSize;
+        const pixelPerMeter = mercatorZfromAltitude(1, this.cameraCenter.lat) * this.worldSize;
         const cameraToCenterDistanceMeters = this._helper.cameraToCenterDistance / pixelPerMeter;
         const camMercator = cameraMercatorCoordinateFromCenterAndRotation(this.center, this.elevation, this.pitch, this.bearing, cameraToCenterDistanceMeters);
         return camMercator.toLngLat();

@@ -1,6 +1,6 @@
 ## main
 ### ✨ Features and improvements
-- Add an adaptive `equal-earth` projection for world maps that transitions to Mercator between zoom 6 and 7 ([#8330](https://github.com/maplibre/maplibre-gl-js/issues/8330)).
+- Add `equal-earth` with an adaptive Mercator transition, a fixed mode and movable projection origins ([#8330](https://github.com/maplibre/maplibre-gl-js/issues/8330)).
 - Reuse terrain resources and preserve camera elevation during gestures and flights when updating terrain exaggeration.
 - Add `map.getStyleUrl()`, which returns the URL the style was loaded from, or `null` when the style was given as an object ([#7109](https://github.com/maplibre/maplibre-gl-js/issues/7109))
 - Sample terrain render-to-texture output through mipmaps with trilinear filtering, so draped layers stop shimmering and aliasing at high pitch ([#8328](https://github.com/maplibre/maplibre-gl-js/pull/8328), continues [#7673](https://github.com/maplibre/maplibre-gl-js/pull/7673)) (by [@AveryanAlex](https://github.com/AveryanAlex))

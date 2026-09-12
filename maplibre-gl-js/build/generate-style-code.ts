@@ -378,7 +378,7 @@ for (const layer of layers) {
 
 const roots: RootProperties[] = ['light', 'sky', 'projection'].map((root) => ({
     root,
-    properties: specProperties(root, {root})
+    properties: specProperties(root, {root}).filter(property => property['property-type'])
 }));
 
 for (const root of roots) {

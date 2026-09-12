@@ -2,7 +2,7 @@ import {MercatorProjection} from './mercator_projection.ts';
 import {shaders, type PreparedShader} from '../../shaders/shaders.ts';
 import {SubdivisionGranularityExpression, SubdivisionGranularitySetting} from '../../render/subdivision_granularity_settings.ts';
 import {createTileMeshWithBuffers} from '../../util/create_tile_mesh.ts';
-import {equalEarthTransition} from './equal_earth_utils.ts';
+import {equalEarthTransition, type EqualEarthParameters} from './equal_earth_utils.ts';
 
 import type {Projection, TileMeshUsage} from './projection.ts';
 import type {Context} from '../../webgl/context.ts';
@@ -24,6 +24,17 @@ export class EqualEarthProjection implements Projection {
     private readonly mercator = new MercatorProjection();
     private readonly meshes = new Map<string, Mesh>();
     private transition = 1;
+    readonly parameters: EqualEarthParameters = {};
+
+    constructor(parameters: EqualEarthParameters = {}) {
+        this.setParameters(parameters);
+    }
+
+    /** Updates the origin without rebuilding tile buffers during a drag. */
+    setParameters(parameters: EqualEarthParameters): void {
+        this.parameters.transition = Array.isArray(parameters.transition) ? [...parameters.transition] : parameters.transition;
+        this.parameters.center = parameters.center ? [...parameters.center] : undefined;
+    }
 
     get name(): 'equal-earth' { return 'equal-earth'; }
     get transitionState(): number { return this.transition; }
@@ -35,7 +46,7 @@ export class EqualEarthProjection implements Projection {
     get subdivisionGranularity(): SubdivisionGranularitySetting { return granularity; }
 
     recalculate(parameters: EvaluationParameters): void {
-        this.transition = equalEarthTransition(parameters.zoom);
+        this.transition = equalEarthTransition(parameters.zoom, this.parameters.transition);
     }
 
     hasTransition(): boolean { return false; }

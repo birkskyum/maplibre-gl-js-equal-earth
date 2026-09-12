@@ -206,9 +206,9 @@ There are also additional presets that yield commonly used expressions:
 |--------|------------|-------------|
 | `globe` | `["interpolate", ["linear"], ["zoom"],`<br>`10, "vertical-perspective", 12, "mercator"]` | Adaptive globe: interpolates from vertical-perspective to mercator projection between zoom levels 10 and 12. |
 
-#### Adaptive Equal Earth
+#### Equal Earth
 
-MapLibre GL JS also supports the named adaptive `equal-earth` projection:
+This prototype adds the named `equal-earth` projection to MapLibre GL JS:
 
 ```json
 {
@@ -218,7 +218,27 @@ MapLibre GL JS also supports the named adaptive `equal-earth` projection:
 
 It displays the spherical Equal Earth projection through zoom 6, preserving relative areas at world scale. Between zoom 6 and 7 it interpolates linearly to Mercator while keeping the camera center fixed. At zoom 7 and above it uses Mercator, including Mercator's terrain support. Intermediate blends are not equal-area.
 
-Equal Earth displays one world while active; the `renderWorldCopies` setting takes effect again when the transition to Mercator is complete. Terrain interaction is supported after the transition. This is a named adaptive projection, not an endpoint for `interpolate` or `step` expressions. It is not yet implemented in MapLibre Native.
+The demo also supports experimental `transition` and `center` options:
+
+```json
+{"projection": {"type": "equal-earth", "transition": false}}
+```
+
+`transition: false` keeps Equal Earth active at every zoom. A pair such as `transition: [6, 7]` sets the zoom range for its transition to Mercator. Omitting the property uses `[6, 7]`.
+
+```json
+{"projection": {"type": "equal-earth", "transition": false, "center": [30, 90]}}
+```
+
+`center` sets the projection origin in longitude and latitude, independently of the map camera. Fixed Equal Earth can place any location, including either pole, at the middle of the outline. Updating `center` with `setProjection` allows the demo to rotate the origin while dragging.
+
+```json
+{"projection": {"type": "equal-earth", "center": [120, 0]}}
+```
+
+Adaptive Equal Earth allows horizontal origin changes only. Its origin latitude must be zero so the transition meets standard Mercator. Fixed modes support hillshade; 3D terrain requires the adaptive transition to reach Mercator.
+
+Equal Earth displays one world while active; the `renderWorldCopies` setting takes effect again when the transition to Mercator is complete. Use this named projection directly, rather than as an endpoint for `interpolate` or `step` expressions. These options are experimental and do not establish the final upstream API. Equal Earth is not yet implemented in MapLibre Native.
 
 
 ## `numberArray`

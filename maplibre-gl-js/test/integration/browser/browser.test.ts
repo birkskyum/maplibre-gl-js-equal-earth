@@ -112,6 +112,88 @@ describe('Browser tests', () => {
         }
     });
 
+    test('Equal Earth keeps geometry aligned with picking at fixed street zooms and shifted origins', {timeout: 30000}, async () => {
+        const results = await page.evaluate(async () => {
+            const results = [];
+            const cases = [
+                {projection: {type: 'equal-earth' as const, transition: false as const}, center: [11.39085, 47.27574], point: [11.39085, 47.27574], zooms: [12, 18, 22]},
+                {projection: {type: 'equal-earth' as const, transition: false as const, center: [120, 45] as [number, number]}, center: [120, 45], point: [-160, 45], zooms: [0]},
+                {projection: {type: 'equal-earth' as const, transition: false as const, center: [120, 45] as [number, number]}, center: [120, 45], point: [120, 45], zooms: [0, 12, 22]},
+                {projection: {type: 'equal-earth' as const, center: [120, 0] as [number, number]}, center: [120, 40], point: [120, 40], zooms: [0, 6.5, 7]}
+            ];
+            for (const entry of cases) {
+                map.setStyle({version: 8, projection: entry.projection,
+                    sources: {point: {type: 'geojson', maxzoom: 22, data: {type: 'Feature', id: 42, properties: {}, geometry: {type: 'Point', coordinates: entry.point}}}},
+                    layers: [{id: 'background', type: 'background', paint: {'background-color': 'white'}},
+                        {id: 'point', source: 'point', type: 'circle', paint: {'circle-radius': 8, 'circle-color': 'blue'}}]
+                });
+                for (const zoom of entry.zooms) {
+                    map.jumpTo({center: entry.center as [number, number], zoom});
+                    await map.once('idle');
+                    const point = map.project(entry.point as [number, number]);
+                    const canvas = map.getCanvas();
+                    const gl = canvas.getContext('webgl2');
+                    const ratio = canvas.width / canvas.clientWidth;
+                    const pixel = new Uint8Array(4);
+                    gl.readPixels(Math.round(point.x * ratio), Math.round((canvas.clientHeight - point.y) * ratio), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+                    results.push({zoom, pixel: [...pixel], ids: map.queryRenderedFeatures(point, {layers: ['point']}).map(feature => feature.id)});
+                }
+            }
+            return results;
+        });
+        for (const result of results) {
+            expect(result.pixel, `blue circle at zoom ${result.zoom}`).toEqual([0, 0, 255, 255]);
+            expect(result.ids).toContain(42);
+        }
+    });
+
+    test('Equal Earth clips filled tiles at street zooms and with either pole at the origin', {timeout: 20000}, async () => {
+        const pixels = await page.evaluate(async () => {
+            map.setStyle({version: 8, projection: {type: 'equal-earth', transition: false},
+                sources: {world: {type: 'geojson', data: {type: 'FeatureCollection', features:
+                    [[-180, 0, '#0000ff'], [0, 180, '#00ff00']].map(([west, east, color]) => ({
+                        type: 'Feature' as const, properties: {color}, geometry: {type: 'Polygon' as const,
+                            coordinates: [[[west, -85], [east, -85], [east, 85], [west, 85], [west, -85]]] as number[][][]}
+                    }))}}},
+                layers: [{id: 'background', type: 'background', paint: {'background-color': 'red'}},
+                    {id: 'world', source: 'world', type: 'fill', paint: {'fill-color': ['get', 'color']}}]});
+            const pixels = [];
+            for (const zoom of [12, 22]) {
+                map.jumpTo({center: [11.39085, 47.27574], zoom});
+                await map.once('idle');
+                const canvas = map.getCanvas();
+                const gl = canvas.getContext('webgl2');
+                for (const x of [0.25, 0.75]) {
+                    for (const y of [0.25, 0.75]) {
+                        const pixel = new Uint8Array(4);
+                        gl.readPixels(canvas.width * x, canvas.height * y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+                        pixels.push({center: [11.39085, 47.27574], lng: 11.39085, lat: 47.27574, pixel: [...pixel]});
+                    }
+                }
+            }
+            for (const center of [[87.890625, 90], [-70, -90], [90, 45]] as Array<[number, number]>) {
+                map.setProjection({type: 'equal-earth', transition: false, center});
+                map.jumpTo({center, zoom: 0});
+                await map.once('idle');
+                const canvas = map.getCanvas();
+                const gl = canvas.getContext('webgl2');
+                const ratio = canvas.width / canvas.clientWidth;
+                for (const lng of [-150, -75, 30, 75, 150]) {
+                    for (const lat of [-80, -60, 0, 60, 80]) {
+                        const point = map.project([lng, lat]);
+                        const pixel = new Uint8Array(4);
+                        gl.readPixels(Math.round(point.x * ratio), Math.round((canvas.clientHeight - point.y) * ratio), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+                        pixels.push({center, lng, lat, pixel: [...pixel]});
+                    }
+                }
+            }
+            return pixels;
+        });
+        for (const {center, lng, lat, pixel} of pixels) {
+            expect(pixel, `filled tile at ${lng},${lat} with origin ${center}`).toEqual(lng < 0 ? [0, 0, 255, 255] : [0, 255, 0, 255]);
+        }
+    });
+
     test('Equal Earth preserves stroke widths and circle sizes at high latitudes', {timeout: 20000}, async () => {
         const results = await page.evaluate(async () => {
             map.setStyle({

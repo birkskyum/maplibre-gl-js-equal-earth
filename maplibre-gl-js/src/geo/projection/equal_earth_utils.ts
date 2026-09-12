@@ -13,8 +13,10 @@ const M = Math.sqrt(3) / 2;
 const WORLD_WIDTH = 2 * Math.PI / (M * A1);
 
 /** Equal Earth is fully visible through zoom 6 and becomes Mercator at zoom 7. */
-export function equalEarthTransition(zoom: number): number {
-    return clamp(7 - zoom, 0, 1);
+export function equalEarthTransition(zoom: number, range?: false | [number, number]): number {
+    if (range === false) return 1;
+    const [start, end] = range ?? [6, 7];
+    return clamp((end - zoom) / (end - start), 0, 1);
 }
 
 /**
@@ -34,10 +36,10 @@ export function projectEqualEarth(lngLat: LngLat): Point {
 }
 
 /** Blends normalized Equal Earth and Mercator coordinates, without a camera-dependent translation. */
-export function projectAdaptiveEqualEarth(lngLat: LngLat, transition: number): Point {
+export function projectAdaptiveEqualEarth(lngLat: LngLat, transition: number, origin?: [number, number], reference: number = 0): Point {
     const mercator = new Point((lngLat.lng + 180) / 360, mercatorYfromLat(clamp(lngLat.lat, -85.0511287798066, 85.0511287798066)));
     if (transition === 0) return mercator;
-    return mercator.mult(1 - transition).add(projectEqualEarth(lngLat).mult(transition));
+    return mercator.mult(1 - transition).add(projectEqualEarth(origin ? rotateEqualEarth(lngLat, origin, reference) : lngLat).mult(transition));
 }
 
 /**
@@ -45,7 +47,14 @@ export function projectAdaptiveEqualEarth(lngLat: LngLat, transition: number): P
  * remains stable at the poles and throughout the transition; X is linear in longitude.
  * Points outside the north/south edges are clamped to the closest latitude.
  */
-export function unprojectAdaptiveEqualEarth(point: Point, transition: number): LngLat {
+export function unprojectAdaptiveEqualEarth(point: Point, transition: number, origin?: [number, number]): LngLat {
+    if (origin) {
+        const location = unprojectAdaptiveEqualEarth(point, transition);
+        if (transition === 1) return unrotateEqualEarth(location, origin);
+        const equalHalfWidth = projectEqualEarth(new LngLat(180, location.lat)).x - 0.5;
+        const blendedHalfWidth = (1 - transition) * 0.5 + transition * equalHalfWidth;
+        return new LngLat(location.lng + origin[0] * transition * equalHalfWidth / blendedHalfWidth, location.lat);
+    }
     if (transition === 0) return new LngLat(point.x * 360 - 180, latFromMercatorY(point.y));
     let south = -90;
     let north = 90;
@@ -58,4 +67,38 @@ export function unprojectAdaptiveEqualEarth(point: Point, transition: number): L
     const latitude = (south + north) / 2;
     const halfWidth = projectAdaptiveEqualEarth(new LngLat(180, latitude), transition).x - 0.5;
     return new LngLat((point.x - 0.5) * 180 / halfWidth, latitude);
+}
+
+/** Parameters shared by the Equal Earth renderer and its live camera transform. */
+export type EqualEarthParameters = {transition?: false | [number, number]; center?: [number, number]};
+
+/** Rotates the sphere so origin becomes longitude zero on the equator; reference chooses a continuous longitude branch. */
+export function rotateEqualEarth(location: LngLat, origin: [number, number], reference: number = 0): LngLat {
+    const longitude = degreesToRadians(location.lng - origin[0]);
+    if (origin[1] === 0) return new LngLat(location.lng - origin[0], location.lat);
+    const latitude = degreesToRadians(location.lat);
+    const tilt = degreesToRadians(origin[1]);
+    const x = Math.cos(latitude) * Math.cos(longitude);
+    const y = Math.cos(latitude) * Math.sin(longitude);
+    const z = Math.sin(latitude);
+    const rotatedX = x * Math.cos(tilt) + z * Math.sin(tilt);
+    const rotatedZ = z * Math.cos(tilt) - x * Math.sin(tilt);
+    let lng = Math.atan2(y, rotatedX) * 180 / Math.PI;
+    lng += 360 * Math.round((reference - lng) / 360);
+    return new LngLat(lng, Math.asin(clamp(rotatedZ, -1, 1)) * 180 / Math.PI);
+}
+
+/** Inverts the spherical rotation, including origins at either geographic pole. */
+export function unrotateEqualEarth(location: LngLat, origin: [number, number]): LngLat {
+    if (origin[1] === 0) return new LngLat(location.lng + origin[0], location.lat);
+    const longitude = degreesToRadians(location.lng);
+    const latitude = degreesToRadians(location.lat);
+    const tilt = degreesToRadians(origin[1]);
+    const x = Math.cos(latitude) * Math.cos(longitude);
+    const y = Math.cos(latitude) * Math.sin(longitude);
+    const z = Math.sin(latitude);
+    const originalX = x * Math.cos(tilt) - z * Math.sin(tilt);
+    const originalZ = z * Math.cos(tilt) + x * Math.sin(tilt);
+    const lng = origin[0] + Math.atan2(y, originalX) * 180 / Math.PI;
+    return new LngLat(((lng + 180) % 360 + 360) % 360 - 180, Math.asin(clamp(originalZ, -1, 1)) * 180 / Math.PI);
 }

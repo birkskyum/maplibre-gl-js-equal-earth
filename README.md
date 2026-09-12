@@ -1,15 +1,24 @@
-# Adaptive Equal Earth demo
+# Equal Earth demo
 
 <img width="1612" height="763" alt="Screenshot 2026-09-09 at 21 50 20" src="https://github.com/user-attachments/assets/e99e8e26-98b9-44a4-97f0-9de84e387d49" />
 
 
 [Open the live demo](https://maplibre-gl-js-equal-earth.pages.dev/)
 
-An experimental MapLibre GL JS build with adaptive Equal Earth, OpenFreeMap Liberty, hillshade, and terrain that rises smoothly after the map transitions to Mercator.
+An experimental MapLibre GL JS build with four Equal Earth modes, OpenFreeMap Liberty, hillshade, and terrain that rises smoothly after the map transitions to Mercator.
 
-Use **World** for the Equal Earth overview and **Alps · 3D** to fly into the mountains. You can also zoom and move the map normally.
+Choose a projection mode from the menu:
 
-Equal Earth transitions to Mercator at zoom 6-7. Terrain grows from flat to full height at zoom 7-9. This prototype does not implement the proposed configurable projection transition API.
+- [Adaptive](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive) transitions to Mercator from zoom 6 to 7.
+- [Fixed](https://maplibre-gl-js-equal-earth.pages.dev/?mode=fixed) stays in Equal Earth at every zoom, with normal map panning.
+- [Fixed with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=fixed-origin) lets you drag in both longitude and latitude, including placing either pole at the center.
+- [Adaptive with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive-origin) lets you drag east or west while Equal Earth is active. The origin stays on the equator so the transition can meet Mercator.
+
+Use **World** for the overview and **Alps** to fly into the mountains. In the origin modes, scroll zoom stays centered while dragging moves the origin. Adaptive mode returns to normal panning once it reaches Mercator.
+
+Terrain grows from flat to full height at zoom 7-9 in the adaptive modes. Fixed modes have hillshade. Data around the geographic poles remains limited by the coverage of the Mercator tile sources.
+
+The prototype uses experimental `transition: false` and `center: [longitude, latitude]` projection options. `transition: [startZoom, endZoom]` also supports custom ranges. These additions support the demos and do not settle the final upstream API or change globe configuration.
 
 The repository contains the full MapLibre GL JS and style-spec source snapshots with the Equal Earth changes, plus the static demo and compiled runtime. The existing demo can be hosted without a build step, backend, or API key.
 
@@ -47,7 +56,7 @@ RENDER_TEST_CONCURRENCY=12 npm run test-render -- --run
 
 ## Hosting
 
-The live demo is hosted on Cloudflare Pages. This GitHub repository stays private. Deployments use Direct Upload, so pushing a commit alone does not update the site.
+The live demo is hosted on Cloudflare Pages, and the source repository is public. Deployments use Direct Upload, so pushing a commit alone does not update the site.
 
 After signing in with `npx wrangler login`, deploy with:
 

@@ -4,6 +4,7 @@ import {LngLat} from '../lng_lat.ts';
 import {LngLatBounds} from '../lng_lat_bounds.ts';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
 import {EqualEarthTransform} from './equal_earth_transform.ts';
+import {EqualEarthCameraHelper} from './equal_earth_camera_helper.ts';
 import {MercatorTransform} from './mercator_transform.ts';
 import {createProjectionFromName} from './projection_factory.ts';
 import {EvaluationParameters} from '../../style/evaluation_parameters.ts';
@@ -184,6 +185,82 @@ describe('adaptive Equal Earth', () => {
                 expect(point.y).toBeGreaterThanOrEqual(padding.top - 0.1);
                 expect(point.y).toBeLessThanOrEqual(600 - padding.bottom + 0.1);
             }
+        }
+    });
+});
+
+describe('fixed Equal Earth', () => {
+    test('flies from a pole to a detailed view without invalid camera coordinates', () => {
+        const parameters = {transition: false as const, center: [30, 90] as [number, number]};
+        const transform = new EqualEarthTransform(undefined, parameters);
+        transform.resize(800, 600);
+        transform.setCenter(new LngLat(30, 90));
+        const helper = new EqualEarthCameraHelper(parameters);
+        const flight = helper.handleFlyTo(transform, {center: [11, 47], zoom: 12,
+            locationAtOffset: transform.center, offsetAsPoint: new Point(0, 0), bearing: 0, pitch: 0, roll: 0,
+            padding: {top: 0, bottom: 0, left: 0, right: 0}});
+        expect(Number.isFinite(flight.pixelPathLength)).toBe(true);
+        flight.easeFunc(0.5, 4, 0.5, transform.centerPoint);
+        expect(transform.locationToScreenPoint(transform.center).dist(transform.centerPoint)).toBeLessThan(1e-5);
+        flight.easeFunc(1, flight.scaleOfZoom, 1, transform.centerPoint);
+        expect(transform.center.lng).toBeCloseTo(11, 7);
+        expect(transform.center.lat).toBeCloseTo(47, 7);
+        expect(transform.zoom).toBe(12);
+    });
+
+    test('keeps physical longitudes in the renderer when an origin crosses the tile seam', () => {
+        const transform = new EqualEarthTransform(undefined, {transition: false, center: [120, 45]});
+        transform.resize(800, 600);
+        transform.setCenter(new LngLat(120, 45));
+        const tiles = coveringTiles(transform, {tileSize: 512});
+        expect(tiles.some(tile => tile.wrap === 3)).toBe(true);
+        for (const tile of tiles) {
+            const data = transform.getProjectionData({overscaledTileID: tile});
+            expect(data.tileMercatorCoords[0]).toBe(transform.physicalWrap(tile.wrap) + tile.canonical.x / (1 << tile.canonical.z));
+            expect(data.projectionOrigin[2]).toBe(transform.hemisphere(tile.wrap));
+        }
+        const tile = new OverscaledTileID(0, 3, 0, 0, 0);
+        const coordinate = MercatorCoordinate.fromLngLat(new LngLat(-160, 45));
+        const planar = transform.projectTileCoordinatesToPlane(coordinate.x * EXTENT, coordinate.y * EXTENT, tile);
+        const screen = transform.projectPlanarTileCoordinates(planar.x, planar.y, tile).point;
+        const direct = transform.projectTileCoordinates(coordinate.x * EXTENT, coordinate.y * EXTENT, tile);
+        expect(direct.isOccluded).toBe(false);
+        expect(screen.dist(direct.point)).toBeLessThan(1e-8);
+    });
+
+    test('projects and inverts detailed map positions above the adaptive transition', () => {
+        const parameters = {transition: false as const};
+        const transform = new EqualEarthTransform(undefined, parameters);
+        transform.resize(800, 600);
+        transform.setCenter(new LngLat(11.39085, 47.27574));
+        for (const zoom of [12, 18, 22]) {
+            transform.setZoom(zoom);
+            expect(transform.transitionState).toBe(1);
+            const location = new LngLat(11.3909, 47.2758);
+            const restored = transform.screenPointToLocation(transform.locationToScreenPoint(location));
+            expect(restored.lng).toBeCloseTo(location.lng, 8);
+            expect(restored.lat).toBeCloseTo(location.lat, 8);
+        }
+    });
+
+    test('keeps either pole finite and centered and preserves options when cloned', () => {
+        for (const latitude of [-90, 90]) {
+            const parameters = {transition: false as const, center: [30, latitude] as [number, number]};
+            const transform = new EqualEarthTransform(undefined, parameters);
+            transform.resize(800, 600);
+            transform.setZoom(2);
+            transform.setCenter(new LngLat(...parameters.center));
+            expect(transform.locationToScreenPoint(transform.center).dist(transform.centerPoint)).toBeLessThan(1e-5);
+            const inverse = transform.screenPointToLocation(transform.centerPoint);
+            expect(inverse.lat).toBeCloseTo(latitude, 5);
+            const clone = transform.clone() as EqualEarthTransform;
+            expect(clone.parameters).toEqual(parameters);
+            expect(clone.transitionState).toBe(1);
+            transform.setZoom(22);
+            const tiles = coveringTiles(transform, {tileSize: 512});
+            expect(tiles.length).toBeGreaterThan(0);
+            expect(tiles.length).toBeLessThan(256);
+            expect(tiles.every(tile => tile.canonical.z <= 6)).toBe(true);
         }
     });
 });
