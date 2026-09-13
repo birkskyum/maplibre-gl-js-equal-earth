@@ -134,8 +134,8 @@
         updateProjection();
         const centerLongitude = dragging.center.lng + longitude - dragging.origin[0];
         const center = adaptive ? [((centerLongitude + 180) % 360 + 360) % 360 - 180, dragging.center.lat] : origin;
-        if (adaptive) map.easeTo({center, offset: [0, dragging.y - dragging.startY], bearing: 0, pitch: 0, duration: 0});
-        else map.jumpTo({center, bearing: 0, pitch: 0});
+        if (adaptive) map.easeTo({center, offset: [0, dragging.y - dragging.startY], duration: 0});
+        else map.jumpTo({center});
     }
 
     map.getCanvas().addEventListener('pointerdown', event => {
