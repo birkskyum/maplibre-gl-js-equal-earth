@@ -77,7 +77,7 @@
     function updateProjection() {
         const {adaptive, movable} = settings();
         map.setProjection({type: 'equal-earth', ...(adaptive ? {} : {transition: false}), ...(movable ? {center: origin} : {})});
-        modeHint.textContent = movable ? adaptive ? 'Drag east or west to shift the origin. Zoom toward the cursor anywhere on the map.'
+        modeHint.textContent = movable ? adaptive ? 'Drag east or west to shift the origin, or up and down to pan. Zoom toward the cursor.'
             : 'Drag in any direction to move the origin, including to either pole.'
             : adaptive ? 'Equal Earth transitions to Mercator from zoom 6 to 7.' : 'Equal Earth stays active at every zoom. Drag to pan the map.';
         originStatus.hidden = !movable;
@@ -122,18 +122,20 @@
         map.getCanvas().style.cursor = active ? 'grab' : '';
     }
 
-    /** Rotates at most once per animation frame as the pointer moves. */
+    /** Rotates the origin and, in adaptive mode, pans vertically at most once per animation frame. */
     function applyDrag() {
         dragFrame = undefined;
         if (!dragging) return;
+        const {adaptive} = settings();
         const scale = 512 * Math.pow(2, map.getZoom());
         const longitude = dragging.origin[0] - (dragging.x - dragging.startX) * 360 / scale;
-        const latitude = settings().adaptive ? 0 : dragging.origin[1] + (dragging.y - dragging.startY) * 268 / scale;
+        const latitude = adaptive ? 0 : dragging.origin[1] + (dragging.y - dragging.startY) * 268 / scale;
         origin = [((longitude + 180) % 360 + 360) % 360 - 180, Math.max(-90, Math.min(90, latitude))];
         updateProjection();
         const centerLongitude = dragging.center.lng + longitude - dragging.origin[0];
-        const center = settings().adaptive ? [((centerLongitude + 180) % 360 + 360) % 360 - 180, dragging.center.lat] : origin;
-        map.jumpTo({center, bearing: 0, pitch: 0});
+        const center = adaptive ? [((centerLongitude + 180) % 360 + 360) % 360 - 180, dragging.center.lat] : origin;
+        if (adaptive) map.easeTo({center, offset: [0, dragging.y - dragging.startY], bearing: 0, pitch: 0, duration: 0});
+        else map.jumpTo({center, bearing: 0, pitch: 0});
     }
 
     map.getCanvas().addEventListener('pointerdown', event => {

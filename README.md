@@ -12,7 +12,7 @@ Choose a projection mode from the menu:
 - [Adaptive](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive) transitions to Mercator from zoom 6 to 7.
 - [Fixed](https://maplibre-gl-js-equal-earth.pages.dev/?mode=fixed) stays in Equal Earth at every zoom, with normal map panning.
 - [Fixed with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=fixed-origin) lets you drag in both longitude and latitude, including placing either pole at the center.
-- [Adaptive with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive-origin) lets you drag east or west while Equal Earth is active. The origin stays on the equator so the transition can meet Mercator.
+- [Adaptive with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive-origin) lets you drag east or west to shift the origin, and up or down to pan the whole map. The origin stays on the equator so the transition can meet Mercator.
 
 Use **World** for the overview and **Alps** to fly into the mountains. In fixed movable-origin mode, scroll zoom stays centered on the origin. In adaptive movable-origin mode, zoom follows the cursor or pinch location, so you can zoom into any part of the map. Adaptive mode returns to normal panning once it reaches Mercator.
 
