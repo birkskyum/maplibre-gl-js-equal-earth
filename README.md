@@ -14,7 +14,7 @@ Choose a projection mode from the menu:
 - [Fixed with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=fixed-origin) lets you drag in both longitude and latitude, including placing either pole at the center.
 - [Adaptive with a movable origin](https://maplibre-gl-js-equal-earth.pages.dev/?mode=adaptive-origin) lets you drag east or west while Equal Earth is active. The origin stays on the equator so the transition can meet Mercator.
 
-Use **World** for the overview and **Alps** to fly into the mountains. In the origin modes, scroll zoom stays centered while dragging moves the origin. Adaptive mode returns to normal panning once it reaches Mercator.
+Use **World** for the overview and **Alps** to fly into the mountains. In fixed movable-origin mode, scroll zoom stays centered on the origin. In adaptive movable-origin mode, zoom follows the cursor or pinch location, so you can zoom into any part of the map. Adaptive mode returns to normal panning once it reaches Mercator.
 
 Terrain grows from flat to full height at zoom 7-9 in the adaptive modes. Fixed modes have hillshade. Data around the geographic poles remains limited by the coverage of the Mercator tile sources.
 

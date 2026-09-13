@@ -12,6 +12,7 @@ out highp vec2 v_projection_tile_position;
 
 mat2 equalEarthJacobian(vec2 pos);
 
+/** Projects through hemisphere boundaries so fragment clipping does not leave gaps between triangles. */
 vec2 equalEarthProject(vec2 mercator, vec2 rawPos) {
     float t = exp(PI - mercator.y * 2.0 * PI);
     float sinLatitude = (t * t - 1.0) / (t * t + 1.0);
@@ -20,7 +21,6 @@ vec2 equalEarthProject(vec2 mercator, vec2 rawPos) {
     float longitude = (mercator.x - 0.5) * 2.0 * PI;
     if (u_projection_origin.z != 0.0) {
         longitude -= u_projection_origin.x;
-        longitude = u_projection_origin.z * clamp(longitude * u_projection_origin.z, 0.000001, PI - 0.000001);
         if (u_projection_origin.y != 0.0) {
             float cosine = sqrt(max(0.0, 1.0 - sinLatitude * sinLatitude));
             float x = cosine * cos(longitude);

@@ -34,9 +34,11 @@ export class EqualEarthTransform extends MercatorTransform {
         this.defaultConstrain = (center, zoom) => {
             if (equalEarthTransition(zoom, this.parameters.transition) === 0) return mercatorConstrain(center, zoom);
             const bounds = this.getMaxBounds();
+            const longitudeOrigin = this.parameters.center?.[1] === 0 ? this.parameters.center[0] : 0;
+            if (!bounds) center = this.locationInOriginWorld(center);
             return {
                 center: new LngLat(
-                    clamp(center.lng, bounds?.getWest() ?? -180, bounds?.getEast() ?? 180),
+                    clamp(center.lng, bounds?.getWest() ?? longitudeOrigin - 180, bounds?.getEast() ?? longitudeOrigin + 180),
                     clamp(center.lat, bounds?.getSouth() ?? -90, bounds?.getNorth() ?? 90)
                 ),
                 zoom: clamp(zoom, this.minZoom, this.maxZoom)
@@ -107,9 +109,16 @@ export class EqualEarthTransform extends MercatorTransform {
             .add(projectAdaptiveEqualEarth(this.center, this.transitionState, this.parameters.center)), this.transitionState, this.parameters.center);
     }
 
+    /** Keeps picking and camera anchors in the world copy containing an east/west-shifted origin. */
+    private locationInOriginWorld(location: LngLat): LngLat {
+        const origin = this.parameters.center;
+        if (origin?.[1] !== 0) return location;
+        return new LngLat(location.lng + 360 * Math.round((origin[0] - location.lng) / 360), location.lat);
+    }
+
     coordinatePoint(coord: MercatorCoordinate, elevation: number = 0, pixelMatrix?: mat4): Point {
         if (!this.transitionState) return super.coordinatePoint(coord, elevation, pixelMatrix);
-        const projected = this.projectToCameraPlane(coord.toLngLat());
+        const projected = this.projectToCameraPlane(this.locationInOriginWorld(coord.toLngLat()));
         return super.coordinatePoint(new MercatorCoordinate(projected.x, projected.y), elevation, pixelMatrix);
     }
 
@@ -131,7 +140,7 @@ export class EqualEarthTransform extends MercatorTransform {
         if (!this.transitionState) return super.setLocationAtPoint(location, point, elevation);
         const a = super.screenPointToMercatorCoordinateAtZ(point, elevation - this.elevation);
         const b = super.screenPointToMercatorCoordinateAtZ(this.centerPoint, 0);
-        const center = projectAdaptiveEqualEarth(location, this.transitionState, this.parameters.center).sub(new Point(a.x - b.x, a.y - b.y));
+        const center = projectAdaptiveEqualEarth(this.locationInOriginWorld(location), this.transitionState, this.parameters.center).sub(new Point(a.x - b.x, a.y - b.y));
         this.setCenter(unprojectAdaptiveEqualEarth(center, this.transitionState, this.parameters.center));
     }
 

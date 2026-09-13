@@ -78,6 +78,24 @@ describe('adaptive Equal Earth', () => {
         expect(transform.locationToScreenPoint(location).dist(point)).toBeLessThan(1e-6);
     });
 
+    test('anchors either side of the date line when zooming into and out of a shifted world', () => {
+        for (const direction of [-1, 1]) {
+            const transform = new EqualEarthTransform(undefined, {center: [105 * direction, 0]});
+            transform.resize(800, 600);
+            transform.setCenter(new LngLat(105 * direction, 0));
+            const location = new LngLat(-125 * direction, 35);
+            const point = new Point(400 + 200 * direction, 220);
+            for (const zoom of [2, 4, 6.5, 7.2, 6.9, 3]) {
+                transform.setZoom(zoom);
+                transform.setLocationAtPoint(location, point);
+                expect(transform.locationToScreenPoint(location).dist(point)).toBeLessThan(1e-6);
+                const inverse = transform.screenPointToLocation(point).wrap();
+                expect(inverse.lng).toBeCloseTo(location.lng, 7);
+                expect(inverse.lat).toBeCloseTo(location.lat, 7);
+            }
+        }
+    });
+
     test('projects symbols and picking using the same coordinates as the map', () => {
         const transform = new EqualEarthTransform();
         transform.resize(800, 600);

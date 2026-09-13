@@ -77,7 +77,7 @@
     function updateProjection() {
         const {adaptive, movable} = settings();
         map.setProjection({type: 'equal-earth', ...(adaptive ? {} : {transition: false}), ...(movable ? {center: origin} : {})});
-        modeHint.textContent = movable ? adaptive ? 'Drag east or west to shift the origin. Zoom in to reach Mercator.'
+        modeHint.textContent = movable ? adaptive ? 'Drag east or west to shift the origin. Zoom toward the cursor anywhere on the map.'
             : 'Drag in any direction to move the origin, including to either pole.'
             : adaptive ? 'Equal Earth transitions to Mercator from zoom 6 to 7.' : 'Equal Earth stays active at every zoom. Drag to pan the map.';
         originStatus.hidden = !movable;
@@ -103,16 +103,17 @@
                 : enabled ? `3D terrain · ${exaggeration.toFixed(2)}× elevation` : 'Hillshade · terrain rises smoothly from zoom 7 to 9';
     }
 
-    /** Origin modes rotate the sphere while keeping zoom centered on the selected origin. */
+    /** Fixed origin mode zooms around its origin; adaptive modes zoom around the cursor or gesture. */
     function updateControls() {
         const {adaptive, movable} = settings();
         const active = movable && (!adaptive || map.getZoom() < 7);
-        if (centeredZoom !== movable) {
-            centeredZoom = movable;
+        const zoomAtCenter = movable && !adaptive;
+        if (centeredZoom !== zoomAtCenter) {
+            centeredZoom = zoomAtCenter;
             map.scrollZoom.disable();
-            map.scrollZoom.enable(movable ? {around: 'center'} : {});
+            map.scrollZoom.enable(zoomAtCenter ? {around: 'center'} : {});
             map.touchZoomRotate.disable();
-            map.touchZoomRotate.enable(movable ? {around: 'center'} : {});
+            map.touchZoomRotate.enable(zoomAtCenter ? {around: 'center'} : {});
         }
         if (active === originControls) return;
         originControls = active;
@@ -161,7 +162,7 @@
         const {movable, adaptive} = settings();
         origin = movable ? [map.getCenter().wrap().lng, adaptive ? 0 : map.getCenter().lat] : [0, 0];
         updateProjection();
-        map.jumpTo({center: movable ? origin : map.getCenter(), pitch: 0, bearing: 0});
+        map.jumpTo({center: movable && !adaptive ? origin : map.getCenter(), pitch: 0, bearing: 0});
         const url = new URL(location.href);
         url.searchParams.set('mode', modeSelect.value);
         history.replaceState(null, '', url);

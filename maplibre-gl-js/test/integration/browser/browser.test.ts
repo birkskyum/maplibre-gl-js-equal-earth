@@ -194,6 +194,47 @@ describe('Browser tests', () => {
         }
     });
 
+    test('Equal Earth joins filled and raster tiles across a movable origin', {timeout: 20000}, async () => {
+        const pixels = await page.evaluate(async () => {
+            const image = document.createElement('canvas');
+            image.width = image.height = 256;
+            const context = image.getContext('2d');
+            context.fillStyle = 'blue';
+            context.fillRect(0, 0, 256, 256);
+            const pixels = [];
+            for (const type of ['fill', 'raster'] as const) {
+                map.setStyle({version: 8,
+                    sources: {world: type === 'raster' ? {type: 'raster', tiles: [image.toDataURL()], tileSize: 256, maxzoom: 0}
+                        : {type: 'geojson', data: {type: 'FeatureCollection', features: [[-180, 0], [0, 180]].map(([west, east]) => ({
+                            type: 'Feature' as const, properties: {}, geometry: {type: 'Polygon' as const,
+                                coordinates: [[[west, -85], [east, -85], [east, 85], [west, 85], [west, -85]]]}
+                        }))}}},
+                    layers: [{id: 'background', type: 'background', paint: {'background-color': 'red'}},
+                        type === 'raster' ? {id: 'world', source: 'world', type: 'raster', paint: {'raster-fade-duration': 0}}
+                            : {id: 'world', source: 'world', type: 'fill', paint: {'fill-color': 'blue', 'fill-antialias': false}}]
+                });
+                for (const latitude of [0, 40]) {
+                    map.setProjection({type: 'equal-earth', center: [97, latitude], ...(latitude ? {transition: false as const} : {})});
+                    map.jumpTo({center: [97, latitude], zoom: 1});
+                    await map.once('idle');
+                    const canvas = map.getCanvas();
+                    const gl = canvas.getContext('webgl2');
+                    const ratio = canvas.width / canvas.clientWidth;
+                    for (const lat of [-20, 0, 20, 40, 60]) {
+                        const point = map.project([97, lat]);
+                        const strip = new Uint8Array(7 * 4);
+                        gl.readPixels(Math.round(point.x * ratio) - 3, Math.round((canvas.clientHeight - point.y) * ratio), 7, 1, gl.RGBA, gl.UNSIGNED_BYTE, strip);
+                        for (let i = 0; i < strip.length; i += 4) pixels.push({type, latitude, lat, color: [...strip.slice(i, i + 4)]});
+                    }
+                }
+            }
+            return pixels;
+        });
+        for (const {type, latitude, lat, color} of pixels) {
+            expect(color, `${type} across origin 97,${latitude} at latitude ${lat}`).toEqual([0, 0, 255, 255]);
+        }
+    });
+
     test('Equal Earth preserves stroke widths and circle sizes at high latitudes', {timeout: 20000}, async () => {
         const results = await page.evaluate(async () => {
             map.setStyle({
