@@ -46,28 +46,6 @@ describe('setRenderWorldCopies', () => {
 
 });
 
-describe('renderWorldCopies with Equal Earth', () => {
-    test('reports the setting while a single world is drawn', async () => {
-        const map = createMap({renderWorldCopies: true, zoom: 2, style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth'}}});
-        await map.once('style.load');
-        expect(map.getRenderWorldCopies()).toBe(true);
-    });
-
-    test('keeps the setting when switching to Mercator at world zoom', async () => {
-        const map = createMap({renderWorldCopies: true, zoom: 2, style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth'}}});
-        await map.once('style.load');
-        map.setProjection({type: 'mercator'});
-        expect(map.getRenderWorldCopies()).toBe(true);
-    });
-
-    test('keeps a disabled setting when leaving a projection origin', async () => {
-        const map = createMap({renderWorldCopies: false, zoom: 2, style: {version: 8, sources: {}, layers: [], projection: {type: 'equal-earth', center: [40, 0]}}});
-        await map.once('style.load');
-        map.setProjection({type: 'mercator'});
-        expect(map.getRenderWorldCopies()).toBe(false);
-    });
-});
-
 describe('renderWorldCopies', () => {
     test('does not constrain horizontal panning when renderWorldCopies is set to true', () => {
         const map = createMap({renderWorldCopies: true});

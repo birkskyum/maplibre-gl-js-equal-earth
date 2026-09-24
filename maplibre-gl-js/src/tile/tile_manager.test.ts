@@ -1,4 +1,3 @@
-import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
 import {afterEach, beforeEach, describe, expect, test, vi} from 'vitest';
 import {TileManager} from './tile_manager.ts';
 import {addSourceType, type Source} from '../source/source.ts';
@@ -8,16 +7,18 @@ import {LngLat} from '../geo/lng_lat.ts';
 import Point from '@mapbox/point-geometry';
 import {ErrorEvent, Event, Evented} from '../util/evented.ts';
 import {extend} from '../util/util.ts';
-import {type Dispatcher} from '../util/dispatcher.ts';
 import {TileBounds} from './tile_bounds.ts';
 import {beforeMapTest, createMap as globalCreateMap, sleep, waitForEvent} from '../util/test/util.ts';
 import {now, restoreNow, setNow} from '../util/time_control.ts';
-
-import {type Map} from '../ui/map.ts';
-import {type TileCache} from './tile_cache.ts';
 import {MercatorTransform} from '../geo/projection/mercator_transform.ts';
 import {GlobeTransform} from '../geo/projection/globe_transform.ts';
 import {coveringTiles} from '../geo/projection/covering_tiles.ts';
+
+import type {TileCache} from './tile_cache.ts';
+import type {Map} from '../ui/map.ts';
+import type {Dispatcher} from '../util/dispatcher.ts';
+import type {StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {SymbolBucket} from '../data/bucket/symbol_bucket.ts';
 
 class SourceMock extends Evented implements Source {
     id: string;
@@ -2694,4 +2695,110 @@ describe('TileManager / etag', () => {
         expect(dataEventSpy).not.toHaveBeenCalled();
         expect(tile.etag).toBe(tileEtag);
     });
+});
+
+describe('TileManager content elevation', () => {
+    let map: Map;
+    let tileManager: TileManager;
+
+    afterEach(() => {
+        tileManager.onRemove(map);
+        map.remove();
+    });
+
+    test('does not scan loaded tiles for a constant symbol-height-offset', async () => {
+        map = globalCreateMap({
+            style: {
+                version: 8,
+                sources: {id: {type: 'geojson', data: {type: 'FeatureCollection', features: []}}},
+                layers: [
+                    {id: 'constant', type: 'symbol', source: 'id', layout: {'symbol-height-offset': 100}},
+                    {id: 'dataDriven', type: 'symbol', source: 'id', layout: {'symbol-height-offset': ['get', 'height']}}
+                ]
+            }
+        });
+        await map.once('load');
+
+        tileManager = createTileManager({
+            async loadTile(tile: Tile) {
+                tile.state = 'loaded';
+            }
+        });
+        tileManager.onAdd(map);
+        const transform = new MercatorTransform();
+        transform.resize(512, 512);
+        tileManager.update(transform);
+        await vi.waitFor(() => expect(tileManager.loaded()).toBe(true));
+
+        const tile = tileManager.getLoadedTile(new OverscaledTileID(0, 0, 0, 0, 0));
+        const getBucket = vi.spyOn(tile, 'getBucket');
+        tileManager.update(transform);
+        expect(getBucket).toHaveBeenCalledTimes(1);
+        expect(getBucket).toHaveBeenCalledWith(map.getLayer('dataDriven'));
+        expect(getBucket).not.toHaveBeenCalledWith(map.getLayer('constant'));
+    });
+
+    test.each(['resetMaxContentElevation', 'clearTiles'] as const)(
+        'preserves expanded tile coverage after unloading until %s', async (reset) => {
+            map = globalCreateMap({
+                maxTileCacheSize: 0,
+                fadeDuration: 0,
+                style: {
+                    version: 8,
+                    sources: {id: {type: 'geojson', data: {type: 'FeatureCollection', features: []}}},
+                    layers: [{
+                        id: 'elevated', type: 'symbol', source: 'id',
+                        layout: {'symbol-height-offset': ['get', 'height']}
+                    }]
+                }
+            });
+            await map.once('load');
+
+            const elevatedTileID = new OverscaledTileID(4, 0, 4, 0, 10);
+            const horizonTileID = new OverscaledTileID(4, 0, 4, 7, 3);
+            tileManager = createTileManager({
+                minzoom: 4,
+                maxzoom: 4,
+                async loadTile(tile: Tile) {
+                    if (tile.tileID.key === elevatedTileID.key) {
+                        tile.buckets.elevated = {maxHeightOffset: 500000, destroy() {}} as SymbolBucket;
+                        tile.hasSymbolBuckets = true;
+                    }
+                    tile.state = 'loaded';
+                },
+                async unloadTile(tile: Tile) {
+                    tile.unloadVectorData();
+                }
+            });
+            tileManager.onAdd(map);
+
+            const transform = new GlobeTransform();
+            transform.resize(1400, 800);
+            transform.setZoom(4.3);
+            transform.setMaxPitch(85);
+            transform.setCenter(new LngLat(-170, -45));
+            await updateTiles();
+            const elevatedTile = tileManager.getLoadedTile(elevatedTileID);
+            expect(elevatedTile).toBeInstanceOf(Tile);
+
+            transform.setCenter(new LngLat(2.3522, 52.0566));
+            transform.setPitch(75);
+            transform.setBearing(180);
+            await updateTiles();
+            setNow(now() + 1);
+            await updateTiles();
+            expect(elevatedTile.state).toBe('unloaded');
+
+            await updateTiles();
+            expect(tileManager.getIds()).toContain(horizonTileID.key);
+
+            tileManager[reset]();
+            await updateTiles();
+            expect(tileManager.getIds()).not.toContain(horizonTileID.key);
+
+            async function updateTiles() {
+                tileManager.update(transform);
+                await vi.waitFor(() => expect(tileManager.loaded()).toBe(true));
+            }
+        });
 });

@@ -1,12 +1,9 @@
-import {type IBoundingVolume} from '../../util/primitives/bounding_volume.ts';
-import {type MercatorCoordinate} from '../mercator_coordinate.ts';
-import {type IReadonlyTransform} from '../transform_interface.ts';
-import {type CoveringTilesOptionsInternal} from './covering_tiles.ts';
+import type {IBoundingVolume} from '../../util/primitives/bounding_volume.ts';
+import type {MercatorCoordinate} from '../mercator_coordinate.ts';
+import type {IReadonlyTransform} from '../transform_interface.ts';
+import type {CoveringTilesOptionsInternal} from './covering_tiles.ts';
 
 export interface CoveringTilesDetailsProvider {
-    /** Adjusts detail for projection regions that extend beyond the source's geographic coverage. */
-    getTileZoom?: (tileID: {x: number; y: number; z: number}, desiredZoom: number) => number;
-
     /**
      * Returns the distance from the point to the tile
      * @param pointX - point x.

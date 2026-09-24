@@ -8,16 +8,13 @@ import {GlobeCameraHelper} from './globe_camera_helper.ts';
 import {VerticalPerspectiveCameraHelper} from './vertical_perspective_camera_helper.ts';
 import {VerticalPerspectiveTransform} from './vertical_perspective_transform.ts';
 import {VerticalPerspectiveProjection} from './vertical_perspective_projection.ts';
-import {EqualEarthProjection} from './equal_earth_projection.ts';
-import {EqualEarthTransform} from './equal_earth_transform.ts';
-import {EqualEarthCameraHelper} from './equal_earth_camera_helper.ts';
 
 import type {ProjectionSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type {Projection} from './projection.ts';
 import type {ITransform, TransformConstrainFunction} from '../transform_interface.ts';
 import type {ICameraHelper} from './camera_helper.ts';
 
-export function createProjectionFromName(name: ProjectionSpecification['type'], transformConstrain: TransformConstrainFunction | undefined, globalState: Record<string, any>, specification?: ProjectionSpecification): {
+export function createProjectionFromName(name: ProjectionSpecification['type'], transformConstrain: TransformConstrainFunction | undefined, globalState: Record<string, any>): {
     projection: Projection;
     transform: ITransform;
     cameraHelper: ICameraHelper;
@@ -32,15 +29,6 @@ export function createProjectionFromName(name: ProjectionSpecification['type'], 
         };
     }
     switch (name) {
-        case 'equal-earth':
-        {
-            const projection = new EqualEarthProjection(specification);
-            return {
-                projection,
-                transform: new EqualEarthTransform(transformOptions, projection.parameters),
-                cameraHelper: new EqualEarthCameraHelper(projection.parameters),
-            };
-        }
         case 'mercator':
         {
             return {

@@ -9,7 +9,8 @@ import {getMercatorHorizon} from './mercator_utils.ts';
 import {mat4} from 'gl-matrix';
 import {createDEM, createDEMTerrain, createTerrain, expectToBeCloseToArray} from '../../util/test/util.ts';
 import {EXTENT} from '../../data/extent.ts';
-import {MercatorCoordinate} from '../mercator_coordinate.ts';
+import {MercatorCoordinate, mercatorZfromAltitude} from '../mercator_coordinate.ts';
+
 import type {Tile} from '../../tile/tile.ts';
 
 describe('transform', () => {
@@ -66,6 +67,44 @@ describe('transform', () => {
             transform.resize(500, 500);
             transform.setCenter(new LngLat(50, -90));
         }).not.toThrow();
+    });
+
+    test('does not throw on a zero size', () => {
+        for (const [width, height] of [[0, 500], [500, 0], [0, 0]]) {
+            const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
+            expect(() => transform.resize(width, height)).not.toThrow();
+            expect(transform.width).toBe(width);
+            expect(transform.height).toBe(height);
+        }
+    });
+
+    test('does not throw when a sized transform is resized to a zero width', () => {
+        const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
+        transform.resize(500, 500);
+        expect(() => transform.resize(0, 500)).not.toThrow();
+        expect(() => transform.setZoom(3)).not.toThrow();
+    });
+
+    test('calculates matrices again once a zero width becomes a real size', () => {
+        const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
+        transform.resize(0, 500);
+        transform.setZoom(5);
+        transform.setPitch(30);
+        transform.setBearing(45);
+        transform.setCenter(new LngLat(10, 20));
+        transform.resize(500, 500);
+
+        const expected = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 60, renderWorldCopies: true});
+        expected.resize(500, 500);
+        expected.setZoom(5);
+        expected.setPitch(30);
+        expected.setBearing(45);
+        expected.setCenter(new LngLat(10, 20));
+
+        expect([...transform.modelViewProjectionMatrix]).toEqual([...expected.modelViewProjectionMatrix]);
+        expect([...transform.cameraPosition]).toEqual([...expected.cameraPosition]);
+        expect(fixedLngLat(transform.screenPointToLocation(new Point(250, 250)))).toEqual({lng: 10, lat: 20});
+        expect(fixedCoord(transform.screenPointToMercatorCoordinate(new Point(250, 250)))).toEqual(fixedCoord(expected.screenPointToMercatorCoordinate(new Point(250, 250))));
     });
 
     test('setLocationAt', () => {
@@ -417,14 +456,16 @@ describe('transform', () => {
         expect(transform.getBounds().getNorthWest().toArray()).toStrictEqual(transform.screenPointToLocation(new Point(0, top)).toArray());
     });
 
-    test('lngLatToCameraDepth', () => {
+    test('isPointOnMapSurface with padding', () => {
         const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 85, renderWorldCopies: true});
         transform.resize(500, 500);
-        transform.setCenter(new LngLat(10.0, 50.0));
+        transform.setPitch(80);
 
-        expect(transform.lngLatToCameraDepth(new LngLat(10, 50), 4)).toBeCloseTo(0.9997324396231673);
-        transform.setPitch(60);
-        expect(transform.lngLatToCameraDepth(new LngLat(10, 50), 4)).toBeCloseTo(0.9865782165762236);
+        transform.setPadding({top: 200, bottom: 0, left: 0, right: 0});
+        expect(transform.isPointOnMapSurface(new Point(250, 200))).toBe(false);
+
+        transform.setPadding({top: 0, bottom: 200, left: 0, right: 0});
+        expect(transform.isPointOnMapSurface(new Point(250, 100))).toBe(true);
     });
 
     test('projectTileCoordinates', () => {
@@ -444,6 +485,48 @@ describe('transform', () => {
         expect(projection.point.y).toBeCloseTo(0.8136784996777623, precisionDigits);
         expect(projection.signedDistanceFromCamera).toBeCloseTo(787.6699126802941, precisionDigits);
         expect(projection.isOccluded).toBe(false);
+    });
+
+    function createPitchedTransform(): MercatorTransform {
+        const transform = new MercatorTransform({minZoom: 0, maxZoom: 22, minPitch: 0, maxPitch: 85, renderWorldCopies: true});
+        transform.resize(512, 512);
+        transform.setZoom(10);
+        transform.setCenter(new LngLat(0, 0));
+        transform.setPitch(80);
+        return transform;
+    }
+
+    test('locationToScreenPoint projects a location in front of the camera', () => {
+        const transform = createPitchedTransform();
+
+        const inFrontOfCamera = transform.locationToScreenPoint(new LngLat(0, 0.05));
+        expect(inFrontOfCamera.x).toBeCloseTo(256, 1);
+        expect(inFrontOfCamera.y).toBeCloseTo(244.4, 1);
+    });
+
+    test('locationToScreenPoint puts a location behind the camera outside the edge it left through', () => {
+        const transform = createPitchedTransform();
+
+        // The camera looks north, so a location south of it left the screen through the bottom edge.
+        const behindCamera = transform.locationToScreenPoint(new LngLat(0, -2));
+        expect(behindCamera.x).toBeCloseTo(256, 6);
+        expect(behindCamera.y).toBeCloseTo(1024, 6);
+
+        // West of a north-facing camera is the left side of the screen.
+        const behindLeft = transform.locationToScreenPoint(new LngLat(-2, -2));
+        expect(behindLeft.x).toBeCloseTo(-512, 6);
+        expect(behindLeft.y).toBeGreaterThan(256);
+        expect(behindLeft.y).toBeLessThan(1024);
+
+        const behindRight = transform.locationToScreenPoint(new LngLat(2, -2));
+        expect(behindRight.x).toBeCloseTo(1024, 6);
+        expect(behindRight.y).toBeCloseTo(behindLeft.y, 6);
+
+        // A location only slightly west still leaves through the bottom edge, left of centre.
+        const behindSlightlyLeft = transform.locationToScreenPoint(new LngLat(-0.2, -2));
+        expect(behindSlightlyLeft.y).toBeCloseTo(1024, 6);
+        expect(behindSlightlyLeft.x).toBeLessThan(256);
+        expect(behindSlightlyLeft.x).toBeGreaterThan(-512);
     });
 
     test('getCameraLngLat', () => {
@@ -675,6 +758,69 @@ function expectWorldPixelsClose(actual: MercatorCoordinate, expected: MercatorCo
     expect(Math.abs(actual.y - expected.y) * worldSize).toBeLessThan(1e-3);
 }
 
+describe('MercatorTransform.calculateCameraOptionsFromTo', () => {
+    const transform = new MercatorTransform();
+    transform.resize(512, 512);
+    transform.setZoom(1); // avoid the center being constrained by the mercator latitude limits
+
+    test('look at north', () => {
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 1, lat: 0}, 0, {lng: 1, lat: 1}, 0);
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.center).toBeDefined();
+        expect(cameraOptions.bearing).toBeCloseTo(0);
+    });
+
+    test('look at west', () => {
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 1, lat: 0}, 0, {lng: 0, lat: 0}, 0);
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.bearing).toBeCloseTo(-90);
+    });
+
+    test('pitch 45', () => {
+        // altitude same as grounddistance => 45°
+        // distance between lng x and lng x+1 is 111.2km at same lat
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 1, lat: 0}, 111200, {lng: 0, lat: 0}, 0);
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.pitch).toBeCloseTo(45);
+    });
+
+    test('pitch 90', () => {
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 1, lat: 0}, 0, {lng: 0, lat: 0}, 0);
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.pitch).toBeCloseTo(90);
+    });
+
+    test('pitch 153.435', () => {
+
+        // distance between lng x and lng x+1 is 111.2km at same lat
+        // (elevation difference of cam and center) / 2 = grounddistance =>
+        // acos(111.2 / sqrt(111.2² + (111.2 * 2)²)) = acos(1/sqrt(5)) => 63.435 + 90 (looking up) = 153.435
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 1, lat: 0}, 111200, {lng: 0, lat: 0}, 111200 * 3);
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.pitch).toBeCloseTo(153.435);
+    });
+
+    test('zoom distance 1000', () => {
+        const expectedZoom = Math.log2(transform.cameraToCenterDistance / mercatorZfromAltitude(1000, 0) / transform.tileSize);
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 0, lat: 0}, 0, {lng: 0, lat: 0}, 1000);
+
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.zoom).toBeCloseTo(expectedZoom);
+    });
+
+    test('zoom distance 1 lng (111.2km), 111.2km altitude away', () => {
+        const expectedZoom = Math.log2(transform.cameraToCenterDistance / mercatorZfromAltitude(Math.hypot(111200, 111200), 0) / transform.tileSize);
+        const cameraOptions = transform.calculateCameraOptionsFromTo({lng: 0, lat: 0}, 0, {lng: 1, lat: 0}, 111200);
+
+        expect(cameraOptions).toBeDefined();
+        expect(cameraOptions.zoom).toBeCloseTo(expectedZoom);
+    });
+
+    test('same To as From error', () => {
+        expect(() => transform.calculateCameraOptionsFromTo({lng: 0, lat: 0}, 0, {lng: 0, lat: 0}, 0)).toThrow('Can\'t calculate camera options with same From and To');
+    });
+});
+
 describe('MercatorTransform.screenTerrainPointToMercatorCoordinate', () => {
     test('matches the plane intersection for a flat DEM', () => {
         const height = 500;
@@ -843,5 +989,49 @@ describe('MercatorTransform.screenTerrainPointToMercatorCoordinate', () => {
 
         const aboveEverything = createRayTransform([0, 256, 5000], [512, 256, 5000], worldSize);
         expect(aboveEverything.screenTerrainPointToMercatorCoordinate(new Point(0, 0), terrain)).toBeNull();
+    });
+});
+
+describe('MercatorTransform.isLocationOccluded', () => {
+    test('a location behind a ridge is hidden and one in front of it is in view', () => {
+        const tileSpanAtZoom12 = 360 / (1 << 12);
+        const ridgeAcrossTheTwoMiddleRows = createDEM((_x, y) => (y === 3 || y === 4) ? 3000 : 0);
+        const terrain = createDEMTerrain([new OverscaledTileID(12, 0, 12, 2048, 2047)], ridgeAcrossTheTwoMiddleRows);
+        const cameraSouthOfRidge = new LngLat(tileSpanAtZoom12 / 2, tileSpanAtZoom12 * 0.25);
+        const transform = createMercatorTransform(cameraSouthOfRidge, 12, 75);
+        const behindRidge = new LngLat(tileSpanAtZoom12 / 2, tileSpanAtZoom12 * 0.8);
+        const inFrontOfRidge = new LngLat(tileSpanAtZoom12 / 2, tileSpanAtZoom12 * 0.3);
+
+        expect(transform.isLocationOccluded(behindRidge, terrain)).toBe(true);
+        expect(transform.isLocationOccluded(inFrontOfRidge, terrain)).toBe(false);
+    });
+
+    test('a location behind a ridge is in view once raised above the ridge', () => {
+        const tileSpanAtZoom12 = 360 / (1 << 12);
+        const ridgeAcrossTheTwoMiddleRows = createDEM((_x, y) => (y === 3 || y === 4) ? 3000 : 0);
+        const terrain = createDEMTerrain([new OverscaledTileID(12, 0, 12, 2048, 2047)], ridgeAcrossTheTwoMiddleRows);
+        const cameraSouthOfRidge = new LngLat(tileSpanAtZoom12 / 2, tileSpanAtZoom12 * 0.25);
+        const transform = createMercatorTransform(cameraSouthOfRidge, 12, 75);
+        const behindRidge = new LngLat(tileSpanAtZoom12 / 2, tileSpanAtZoom12 * 0.8);
+        const elevationAboveRidge = 3500;
+
+        expect(transform.isLocationOccluded(behindRidge, terrain, elevationAboveRidge)).toBe(false);
+    });
+
+    test('a location behind the camera or beyond the far plane is hidden', () => {
+        const terrain = createDEMTerrain([new OverscaledTileID(0, 0, 0, 0, 0)], createDEM(() => 0));
+        const transform = createMercatorTransform(new LngLat(0, 0), 6, 80);
+        const behindTheCamera = new LngLat(0, -70);
+        const beyondTheFarPlane = new LngLat(0, 70);
+
+        expect(transform.isLocationOccluded(behindTheCamera, terrain)).toBe(true);
+        expect(transform.isLocationOccluded(beyondTheFarPlane, terrain)).toBe(true);
+    });
+
+    test('nothing is hidden when the terrain has no renderable tiles', () => {
+        const terrain = createDEMTerrain([], null);
+        const transform = createMercatorTransform(new LngLat(0, 0), 12, 75);
+
+        expect(transform.isLocationOccluded(new LngLat(0, 0.01), terrain)).toBe(false);
     });
 });

@@ -5,10 +5,11 @@ import {LngLat} from '../lng_lat.ts';
 import {GlobeTransform} from './globe_transform.ts';
 import {CanonicalTileID, OverscaledTileID, UnwrappedTileID} from '../../tile/tile_id.ts';
 import {angularCoordinatesRadiansToVector, mercatorCoordinatesToAngularCoordinatesRadians, sphereSurfacePointToCoordinates, versorSetLocationAtPoint} from './globe_utils.ts';
-import {expectToBeCloseToArray} from '../../util/test/util.ts';
+import {createTerrain, expectToBeCloseToArray} from '../../util/test/util.ts';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
 import {tileCoordinatesToLocation} from './mercator_utils.ts';
 import {MercatorTransform} from './mercator_transform.ts';
+import {VerticalPerspectiveTransform} from './vertical_perspective_transform.ts';
 import {differenceOfAnglesDegrees, MAX_VALID_LATITUDE} from '../../util/util.ts';
 
 function testPlaneAgainstLngLat(lngDegrees: number, latDegrees: number, plane: number[]) {
@@ -35,6 +36,34 @@ function createGlobeTransform() {
 }
 
 describe('GlobeTransform', () => {
+    describe('zero size', () => {
+        test('does not throw when cloned at a zero size', () => {
+            for (const [width, height] of [[0, 480], [640, 0]]) {
+                const globeTransform = new GlobeTransform();
+                globeTransform.resize(width, height);
+                expect(() => globeTransform.clone()).not.toThrow();
+            }
+        });
+
+        test('calculates matrices again once a zero width becomes a real size', () => {
+            const globeTransform = new GlobeTransform();
+            globeTransform.resize(0, 480);
+            globeTransform.setZoom(3);
+            globeTransform.setCenter(new LngLat(10, 20));
+            const resized = globeTransform.clone();
+            resized.resize(640, 480, true);
+
+            const expected = new GlobeTransform();
+            expected.resize(640, 480);
+            expected.setZoom(3);
+            expected.setCenter(new LngLat(10, 20));
+
+            expect([...resized.modelViewProjectionMatrix]).toEqual([...expected.modelViewProjectionMatrix]);
+            expect(resized.screenPointToLocation(new Point(320, 240)).lng).toBeCloseTo(10, 6);
+            expect(resized.screenPointToLocation(new Point(320, 240)).lat).toBeCloseTo(20, 6);
+        });
+    });
+
     describe('getProjectionData', () => {
         const globeTransform = createGlobeTransform();
         test('mercator tile extents are set', () => {
@@ -474,6 +503,15 @@ describe('GlobeTransform', () => {
             expect(globeTransform.isPointOnMapSurface(new Point(223, 147))).toBe(true);
             expect(globeTransform.isPointOnMapSurface(new Point(221, 144))).toBe(false);
         });
+
+        test('isPointOnMapSurface is false for point in sky, and true for point on surface', () => {
+            const pitchedTransform = new GlobeTransform({maxPitch: 85});
+            pitchedTransform.resize(640, 480);
+            pitchedTransform.setZoom(11);
+            pitchedTransform.setPitch(85);
+            expect(pitchedTransform.isPointOnMapSurface(new Point(320, 0))).toBe(false);
+            expect(pitchedTransform.isPointOnMapSurface(new Point(320, 479))).toBe(true);
+        });
     });
 
     test('pointCoordinate', () => {
@@ -641,11 +679,121 @@ describe('GlobeTransform', () => {
         });
     });
 
+    describe('getCameraAltitude', () => {
+        test('matches the mercator transform at the same zoom and pitch', () => {
+            const globe = new GlobeTransform();
+            globe.resize(512, 512);
+            globe.setZoom(14);
+            globe.setCenter(new LngLat(10, 50));
+            globe.setPitch(45);
+
+            const mercator = new MercatorTransform();
+            mercator.resize(512, 512);
+            mercator.setZoom(14);
+            mercator.setCenter(new LngLat(10, 50));
+            mercator.setPitch(45);
+
+            // the globe is a sphere here, mercator a plane: the altitudes agree to within half a metre
+            expect(globe.getCameraAltitude()).toBeCloseTo(mercator.getCameraAltitude(), 0);
+        });
+
+        test('follows the vertical perspective transform at low zoom and high pitch', () => {
+            const globe = new GlobeTransform();
+            globe.resize(512, 512);
+            globe.setMaxPitch(180);
+            globe.setZoom(4);
+            globe.setCenter(new LngLat(10, 50));
+            globe.setPitch(100);
+
+            const vp = new VerticalPerspectiveTransform();
+            vp.resize(512, 512);
+            vp.setMaxPitch(180);
+            vp.setZoom(4);
+            vp.setCenter(new LngLat(10, 50));
+            vp.setPitch(100);
+
+            expect(globe.getCameraAltitude()).toBeGreaterThan(0);
+            expect(globe.getCameraAltitude()).toBeCloseTo(vp.getCameraAltitude(), 6);
+            expect(globe.getCameraLngLat().lat).toBeCloseTo(vp.getCameraLngLat().lat, 9);
+
+            const lifted = globe.calculateCameraOptionsFromTo(globe.getCameraLngLat(), 0, globe.center, 0);
+            const liftedVp = vp.calculateCameraOptionsFromTo(vp.getCameraLngLat(), 0, vp.center, 0);
+            expect(lifted.pitch).toBeCloseTo(liftedVp.pitch, 9);
+            expect(lifted.zoom).toBeCloseTo(liftedVp.zoom, 9);
+        });
+
+        test('reads the camera from the child the transition state selects', () => {
+            const globe = new GlobeTransform();
+            globe.resize(512, 512);
+            globe.setMaxPitch(180);
+            globe.setZoom(4);
+            globe.setCenter(new LngLat(10, 50));
+            globe.setPitch(100);
+
+            const mercator = new MercatorTransform();
+            mercator.resize(512, 512);
+            mercator.setMaxPitch(180);
+            mercator.setZoom(4);
+            mercator.setCenter(new LngLat(10, 50));
+            mercator.setPitch(100);
+
+            const vp = new VerticalPerspectiveTransform();
+            vp.resize(512, 512);
+            vp.setMaxPitch(180);
+            vp.setZoom(4);
+            vp.setCenter(new LngLat(10, 50));
+            vp.setPitch(100);
+
+            globe.setTransitionState(0);
+            expect(globe.getCameraAltitude()).toBeLessThan(0);
+            expect(globe.getCameraAltitude()).toBeCloseTo(mercator.getCameraAltitude(), 6);
+            expect(globe.calculateCameraOptionsFromTo(globe.getCameraLngLat(), 0, globe.center, 0).pitch).toBeCloseTo(90, 9);
+
+            globe.setTransitionState(1);
+            expect(globe.getCameraAltitude()).toBeGreaterThan(0);
+            expect(globe.getCameraAltitude()).toBeCloseTo(vp.getCameraAltitude(), 6);
+            expect(globe.calculateCameraOptionsFromTo(globe.getCameraLngLat(), 0, globe.center, 0).pitch).toBeGreaterThan(90);
+        });
+
+        test('matches the mercator transform while the globe is rendered as a sphere', () => {
+            const globe = new GlobeTransform();
+            globe.resize(512, 512);
+            globe.setZoom(2);
+            globe.setCenter(new LngLat(0, 0));
+
+            const mercator = new MercatorTransform();
+            mercator.resize(512, 512);
+            mercator.setZoom(2);
+            mercator.setCenter(new LngLat(0, 0));
+
+            expect(globe.getCameraAltitude()).toBeCloseTo(mercator.getCameraAltitude(), 6);
+        });
+    });
+
+    describe('recalculateZoomAndCenter', () => {
+        test('adjusts elevation, zoom and center to the terrain under the rendered projection', () => {
+            const terrain = createTerrain();
+            terrain.getElevationForLngLat = () => 1000;
+            const globe = new GlobeTransform();
+            globe.resize(512, 512);
+            globe.setTransitionState(0);
+            globe.setZoom(13);
+            globe.setCenter(new LngLat(8, 47));
+            globe.setPitch(60);
+
+            globe.recalculateZoomAndCenter(terrain);
+            expect(globe.elevation).toBe(1000);
+            expect(globe.zoom).toBeCloseTo(13.7376, 4);
+            expect(globe.center.lng).toBe(8);
+            expect(globe.center.lat).toBeCloseTo(46.9844, 4);
+        });
+    });
+
     describe('render world copies', () => {
         test('change projection and make sure render world copies is kept', () => {
             const globeTransform = createGlobeTransform();
             globeTransform.setRenderWorldCopies(true);
-            
+
             expect(globeTransform.renderWorldCopies).toBeTruthy();
         });
 

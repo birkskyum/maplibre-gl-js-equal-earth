@@ -84,7 +84,6 @@ function validSchema(k, v, obj, ref, version, kind) {
         'variableAnchorOffsetCollection',
         'sprite',
         'projectionDefinition',
-        'projectionTransition',
         'state',
         'fontFaces'
     ]);

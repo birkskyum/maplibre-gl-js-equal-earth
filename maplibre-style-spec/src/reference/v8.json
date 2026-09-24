@@ -3518,7 +3518,7 @@
         "group": "Types",
         "sdk-support": {
           "basic functionality": {
-            "js": "https://github.com/maplibre/maplibre-gl-js/issues/7933",
+            "js": "6.6.0",
             "android": "https://github.com/maplibre/maplibre-native/issues/4401",
             "ios": "https://github.com/maplibre/maplibre-native/issues/4401"
           }
@@ -6448,19 +6448,9 @@
     }
   },
   "projection": {
-    "transition": {
-      "type": "projectionTransition",
-      "doc": "Experimental Equal Earth transition. Omit for zoom 6 to 7, use [startZoom, endZoom] for another range, or false to keep Equal Earth at every zoom."
-    },
-    "center": {
-      "type": "array",
-      "value": "number",
-      "length": 2,
-      "doc": "Experimental Equal Earth origin [longitude, latitude] in degrees. Adaptive Equal Earth supports longitude changes only. Fixed Equal Earth also supports latitude changes."
-    },
     "type": {
       "type": "projectionDefinition",
-      "doc": "The projection definition type. Can be specified as a string, a transition state, or an expression. The named adaptive projections are `globe` and `equal-earth`. In MapLibre GL JS, `equal-earth` displays an Equal Earth world map through zoom 6, transitions linearly to Mercator between zoom 6 and 7, and uses Mercator from zoom 7 onward. Use `equal-earth` as a named projection, rather than as an endpoint in a projection expression.",
+      "doc": "The projection definition type. Can be specified as a string, a transition state, or an expression.",
       "default": "mercator",
       "property-type": "data-constant",
       "transition": false,

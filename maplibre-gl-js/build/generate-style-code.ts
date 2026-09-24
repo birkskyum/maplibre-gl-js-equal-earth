@@ -1,7 +1,6 @@
 'use strict';
 
 import * as fs from 'fs';
-
 import {latest, type StylePropertySpecification} from '@maplibre/maplibre-gl-style-spec';
 
 /**
@@ -378,7 +377,7 @@ for (const layer of layers) {
 
 const roots: RootProperties[] = ['light', 'sky', 'projection'].map((root) => ({
     root,
-    properties: specProperties(root, {root}).filter(property => property['property-type'])
+    properties: specProperties(root, {root})
 }));
 
 for (const root of roots) {

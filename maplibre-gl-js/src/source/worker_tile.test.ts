@@ -7,6 +7,7 @@ import {MessageType} from '../util/actor_messages.ts';
 import {SubdivisionGranularitySetting} from '../render/subdivision_granularity_settings.ts';
 import {createFakeActor} from '../util/test/util.ts';
 import {Color} from '@maplibre/maplibre-gl-style-spec';
+
 import type {WorkerTileParameters, WorkerTileWithData} from './worker_source.ts';
 import type {EvaluationParameters} from '../style/evaluation_parameters.ts';
 import type {PossiblyEvaluated} from '../style/properties.ts';
@@ -227,8 +228,9 @@ describe('worker tile', () => {
         const actorMock = {
             sendAsync
         };
-        const result = await tile.parse(data, layerIndex, ['hello'], actorMock, SubdivisionGranularitySetting.noSubdivision);
+        const result = await tile.parse(data, layerIndex, ['hello'], actorMock, SubdivisionGranularitySetting.noSubdivision) as WorkerTileWithData;
         expect(result).toBeDefined();
+        expect(result.buckets.some((bucket) => bucket.layerIds.includes('test'))).toBe(true);
         expect(sendAsync).toHaveBeenCalledTimes(4); // icons, patterns, glyphs, dashes
         expect(sendAsync).toHaveBeenCalledWith(expect.objectContaining({type: 'GI', data: expect.objectContaining({'icons': ['hello'], 'type': 'icons'})}), expect.any(Object));
         expect(sendAsync).toHaveBeenCalledWith(expect.objectContaining({type: 'GI', data: expect.objectContaining({'icons': ['hello'], 'type': 'patterns'})}), expect.any(Object));

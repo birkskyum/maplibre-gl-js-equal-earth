@@ -1,11 +1,11 @@
 import {describe, beforeEach, beforeAll, afterEach, afterAll, test, expect} from 'vitest';
-import {type Page, type Browser} from 'puppeteer';
 import st from 'st';
 import http, {type Server} from 'http';
-import type {AddressInfo} from 'net';
-
 import {sleep} from '../../../src/util/test/util.ts';
 import {launchPuppeteer} from '../lib/puppeteer_config.ts';
+
+import type {Page, Browser} from 'puppeteer';
+import type {AddressInfo} from 'net';
 import type {Map} from '../../../dist/maplibre-gl';
 import type * as MapLibreGL from '../../../dist/maplibre-gl';
 
@@ -60,273 +60,6 @@ describe('Browser tests', () => {
         server?.close();
     }, 40000);
 
-    test('Equal Earth projects, picks and positions markers across the Mercator transition', {timeout: 20000}, async () => {
-        const errors: string[] = [];
-        page.on('pageerror', error => errors.push(String(error)));
-        const results = await page.evaluate(async () => {
-            map.setStyle({
-                version: 8,
-                projection: {type: 'equal-earth'},
-                sources: {
-                    point: {type: 'geojson', data: {type: 'Feature', id: 42, properties: {}, geometry: {type: 'Point', coordinates: [120, 70]}}}
-                },
-                layers: [
-                    {id: 'background', type: 'background', paint: {'background-color': '#def'}},
-                    {id: 'point', source: 'point', type: 'circle', paint: {'circle-radius': 10}}
-                ]
-            });
-            const element = document.createElement('div');
-            element.style.width = '10px';
-            element.style.height = '10px';
-            const marker = new maplibregl.Marker({element}).setLngLat([120, 70]).addTo(map);
-            const results = [];
-            for (const zoom of [0, 6.5, 7]) {
-                map.jumpTo({center: [120, 70], zoom});
-                await map.once('idle');
-                const projected = map.project([120, 70]);
-                const inverse = map.unproject(projected);
-                const markerRect = element.getBoundingClientRect();
-                const containerRect = map.getContainer().getBoundingClientRect();
-                results.push({
-                    inverse: inverse.toArray(),
-                    ids: map.queryRenderedFeatures(projected, {layers: ['point']}).map(feature => feature.id),
-                    markerDistance: Math.hypot(markerRect.x + markerRect.width / 2 - containerRect.x - projected.x,
-                        markerRect.y + markerRect.height / 2 - containerRect.y - projected.y),
-                    projection: map.getProjection()
-                });
-            }
-            marker.remove();
-            map.setProjection({type: 'mercator'});
-            await map.once('idle');
-            map.setProjection({type: 'equal-earth'});
-            await map.once('idle');
-            return results;
-        });
-        expect(errors).toEqual([]);
-        for (const result of results) {
-            expect(result.inverse[0]).toBeCloseTo(120, 7);
-            expect(result.inverse[1]).toBeCloseTo(70, 7);
-            expect(result.ids).toContain(42);
-            expect(result.markerDistance).toBeLessThan(1);
-            expect(result.projection).toEqual({type: 'equal-earth'});
-        }
-    });
-
-    test('Equal Earth keeps geometry aligned with picking at fixed street zooms and shifted origins', {timeout: 30000}, async () => {
-        const results = await page.evaluate(async () => {
-            const results = [];
-            const cases = [
-                {projection: {type: 'equal-earth' as const, transition: false as const}, center: [11.39085, 47.27574], point: [11.39085, 47.27574], zooms: [12, 18, 22]},
-                {projection: {type: 'equal-earth' as const, transition: false as const, center: [120, 45] as [number, number]}, center: [120, 45], point: [-160, 45], zooms: [0]},
-                {projection: {type: 'equal-earth' as const, transition: false as const, center: [120, 45] as [number, number]}, center: [120, 45], point: [120, 45], zooms: [0, 12, 22]},
-                {projection: {type: 'equal-earth' as const, center: [120, 0] as [number, number]}, center: [120, 40], point: [120, 40], zooms: [0, 6.5, 7]}
-            ];
-            for (const entry of cases) {
-                map.setStyle({version: 8, projection: entry.projection,
-                    sources: {point: {type: 'geojson', maxzoom: 22, data: {type: 'Feature', id: 42, properties: {}, geometry: {type: 'Point', coordinates: entry.point}}}},
-                    layers: [{id: 'background', type: 'background', paint: {'background-color': 'white'}},
-                        {id: 'point', source: 'point', type: 'circle', paint: {'circle-radius': 8, 'circle-color': 'blue'}}]
-                });
-                for (const zoom of entry.zooms) {
-                    map.jumpTo({center: entry.center as [number, number], zoom});
-                    await map.once('idle');
-                    const point = map.project(entry.point as [number, number]);
-                    const canvas = map.getCanvas();
-                    const gl = canvas.getContext('webgl2');
-                    const ratio = canvas.width / canvas.clientWidth;
-                    const pixel = new Uint8Array(4);
-                    gl.readPixels(Math.round(point.x * ratio), Math.round((canvas.clientHeight - point.y) * ratio), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-                    results.push({zoom, pixel: [...pixel], ids: map.queryRenderedFeatures(point, {layers: ['point']}).map(feature => feature.id)});
-                }
-            }
-            return results;
-        });
-        for (const result of results) {
-            expect(result.pixel, `blue circle at zoom ${result.zoom}`).toEqual([0, 0, 255, 255]);
-            expect(result.ids).toContain(42);
-        }
-    });
-
-    test('Equal Earth clips filled tiles at street zooms and with either pole at the origin', {timeout: 20000}, async () => {
-        const pixels = await page.evaluate(async () => {
-            map.setStyle({version: 8, projection: {type: 'equal-earth', transition: false},
-                sources: {world: {type: 'geojson', data: {type: 'FeatureCollection', features:
-                    [[-180, 0, '#0000ff'], [0, 180, '#00ff00']].map(([west, east, color]) => ({
-                        type: 'Feature' as const, properties: {color}, geometry: {type: 'Polygon' as const,
-                            coordinates: [[[west, -85], [east, -85], [east, 85], [west, 85], [west, -85]]] as number[][][]}
-                    }))}}},
-                layers: [{id: 'background', type: 'background', paint: {'background-color': 'red'}},
-                    {id: 'world', source: 'world', type: 'fill', paint: {'fill-color': ['get', 'color']}}]});
-            const pixels = [];
-            for (const zoom of [12, 22]) {
-                map.jumpTo({center: [11.39085, 47.27574], zoom});
-                await map.once('idle');
-                const canvas = map.getCanvas();
-                const gl = canvas.getContext('webgl2');
-                for (const x of [0.25, 0.75]) {
-                    for (const y of [0.25, 0.75]) {
-                        const pixel = new Uint8Array(4);
-                        gl.readPixels(canvas.width * x, canvas.height * y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-                        pixels.push({center: [11.39085, 47.27574], lng: 11.39085, lat: 47.27574, pixel: [...pixel]});
-                    }
-                }
-            }
-            for (const center of [[87.890625, 90], [-70, -90], [90, 45]] as Array<[number, number]>) {
-                map.setProjection({type: 'equal-earth', transition: false, center});
-                map.jumpTo({center, zoom: 0});
-                await map.once('idle');
-                const canvas = map.getCanvas();
-                const gl = canvas.getContext('webgl2');
-                const ratio = canvas.width / canvas.clientWidth;
-                for (const lng of [-150, -75, 30, 75, 150]) {
-                    for (const lat of [-80, -60, 0, 60, 80]) {
-                        const point = map.project([lng, lat]);
-                        const pixel = new Uint8Array(4);
-                        gl.readPixels(Math.round(point.x * ratio), Math.round((canvas.clientHeight - point.y) * ratio), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
-                        pixels.push({center, lng, lat, pixel: [...pixel]});
-                    }
-                }
-            }
-            return pixels;
-        });
-        for (const {center, lng, lat, pixel} of pixels) {
-            expect(pixel, `filled tile at ${lng},${lat} with origin ${center}`).toEqual(lng < 0 ? [0, 0, 255, 255] : [0, 255, 0, 255]);
-        }
-    });
-
-    test('Equal Earth joins filled and raster tiles across a movable origin', {timeout: 20000}, async () => {
-        const pixels = await page.evaluate(async () => {
-            const image = document.createElement('canvas');
-            image.width = image.height = 256;
-            const context = image.getContext('2d');
-            context.fillStyle = 'blue';
-            context.fillRect(0, 0, 256, 256);
-            const pixels = [];
-            for (const type of ['fill', 'raster'] as const) {
-                map.setStyle({version: 8,
-                    sources: {world: type === 'raster' ? {type: 'raster', tiles: [image.toDataURL()], tileSize: 256, maxzoom: 0}
-                        : {type: 'geojson', data: {type: 'FeatureCollection', features: [[-180, 0], [0, 180]].map(([west, east]) => ({
-                            type: 'Feature' as const, properties: {}, geometry: {type: 'Polygon' as const,
-                                coordinates: [[[west, -85], [east, -85], [east, 85], [west, 85], [west, -85]]]}
-                        }))}}},
-                    layers: [{id: 'background', type: 'background', paint: {'background-color': 'red'}},
-                        type === 'raster' ? {id: 'world', source: 'world', type: 'raster', paint: {'raster-fade-duration': 0}}
-                            : {id: 'world', source: 'world', type: 'fill', paint: {'fill-color': 'blue', 'fill-antialias': false}}]
-                });
-                for (const latitude of [0, 40]) {
-                    map.setProjection({type: 'equal-earth', center: [97, latitude], ...(latitude ? {transition: false as const} : {})});
-                    map.jumpTo({center: [97, latitude], zoom: 1});
-                    await map.once('idle');
-                    const canvas = map.getCanvas();
-                    const gl = canvas.getContext('webgl2');
-                    const ratio = canvas.width / canvas.clientWidth;
-                    for (const lat of [-20, 0, 20, 40, 60]) {
-                        const point = map.project([97, lat]);
-                        const strip = new Uint8Array(7 * 4);
-                        gl.readPixels(Math.round(point.x * ratio) - 3, Math.round((canvas.clientHeight - point.y) * ratio), 7, 1, gl.RGBA, gl.UNSIGNED_BYTE, strip);
-                        for (let i = 0; i < strip.length; i += 4) pixels.push({type, latitude, lat, color: [...strip.slice(i, i + 4)]});
-                    }
-                }
-            }
-            return pixels;
-        });
-        for (const {type, latitude, lat, color} of pixels) {
-            expect(color, `${type} across origin 97,${latitude} at latitude ${lat}`).toEqual([0, 0, 255, 255]);
-        }
-    });
-
-    test('Equal Earth preserves stroke widths and circle sizes at high latitudes', {timeout: 20000}, async () => {
-        const results = await page.evaluate(async () => {
-            map.setStyle({
-                version: 8,
-                projection: {type: 'equal-earth'},
-                sources: {
-                    features: {type: 'geojson', data: {type: 'FeatureCollection', features: [0, 70].flatMap(lat => [
-                        {type: 'Feature' as const, properties: {}, geometry: {type: 'LineString' as const, coordinates: [[-120, lat], [120, lat]]}},
-                        {type: 'Feature' as const, properties: {}, geometry: {type: 'Point' as const, coordinates: [0, lat]}}
-                    ])}}
-                },
-                layers: [
-                    {id: 'background', type: 'background', paint: {'background-color': 'white'}},
-                    {id: 'lines', source: 'features', type: 'line', filter: ['==', '$type', 'LineString'], paint: {'line-color': 'black', 'line-width': 6}},
-                    {id: 'circles', source: 'features', type: 'circle', filter: ['==', '$type', 'Point'], paint: {'circle-color': 'blue', 'circle-radius': 10, 'circle-pitch-alignment': 'map', 'circle-pitch-scale': 'map'}}
-                ]
-            });
-            map.jumpTo({center: [0, 35], zoom: 0});
-            await map.once('idle');
-            const canvas = map.getCanvas();
-            const gl = canvas.getContext('webgl2');
-            const ratio = canvas.width / canvas.clientWidth;
-            return [0, 70].map(lat => {
-                const line = map.project([-60, lat]);
-                const circle = map.project([0, lat]);
-                const pixels = new Uint8Array(4 * 40 * ratio);
-                gl.readPixels(Math.round(line.x * ratio), Math.round((canvas.clientHeight - line.y - 20) * ratio), 1, 40 * ratio, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-                let strokePixels = 0;
-                for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 3] > 128 && pixels[i] < 128) strokePixels++;
-                gl.readPixels(Math.round(circle.x * ratio), Math.round((canvas.clientHeight - circle.y - 20) * ratio), 1, 40 * ratio, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-                let circlePixels = 0;
-                for (let i = 0; i < pixels.length; i += 4) if (pixels[i + 2] > 128 && pixels[i] < 128) circlePixels++;
-                return {
-                    strokeWidth: strokePixels / ratio,
-                    circleDiameter: circlePixels / ratio,
-                    lineHit: map.queryRenderedFeatures([line.x, line.y + 2], {layers: ['lines']}).length,
-                    lineMiss: map.queryRenderedFeatures([line.x, line.y + 5], {layers: ['lines']}).length,
-                    circleHit: map.queryRenderedFeatures([circle.x, circle.y + 8], {layers: ['circles']}).length,
-                    circleMiss: map.queryRenderedFeatures([circle.x, circle.y + 13], {layers: ['circles']}).length
-                };
-            });
-        });
-        for (const result of results) {
-            expect(result.strokeWidth).toBeCloseTo(6, 0);
-            // Sampling antialiased edges can exclude one device pixel.
-            expect(Math.abs(result.circleDiameter - 20)).toBeLessThanOrEqual(0.5);
-            expect(result.lineHit).toBeGreaterThan(0);
-            expect(result.lineMiss).toBe(0);
-            expect(result.circleHit).toBeGreaterThan(0);
-            expect(result.circleMiss).toBe(0);
-        }
-    });
-
-    test.each(['cursor zoom', 'flight'])('Terrain height updates preserve the camera elevation during %s', {timeout: 20000}, async (movement) => {
-        const results = await page.evaluate(async (movement) => {
-            const dem = document.createElement('canvas');
-            dem.width = dem.height = 256;
-            const context = dem.getContext('2d');
-            context.fillStyle = 'rgb(1, 173, 176)';
-            context.fillRect(0, 0, 256, 256);
-            map.setStyle({
-                version: 8,
-                projection: {type: 'equal-earth'},
-                sources: {dem: {type: 'raster-dem', tiles: [dem.toDataURL()], tileSize: 256, maxzoom: 0}},
-                layers: [{id: 'background', type: 'background', paint: {'background-color': 'white'}}],
-                terrain: {source: 'dem', exaggeration: 0}
-            });
-            map.jumpTo({center: [11, 47], zoom: 7.5, pitch: 65});
-            await map.once('idle');
-            const updates: number[] = [];
-            map.on('zoom', () => {
-                const elevation = map.getCenterElevation();
-                const t = Math.max(0, Math.min(1, (map.getZoom() - 7) / 2));
-                map.setTerrain({source: 'dem', exaggeration: 1.3 * t * t * (3 - 2 * t)});
-                updates.push(Math.abs(map.getCenterElevation() - elevation));
-            });
-            if (movement === 'flight') {
-                map.flyTo({center: [11.1, 47.1], zoom: 10.5, duration: 600});
-            } else {
-                for (let i = 0; i < 12; i++) {
-                    map.getCanvas().dispatchEvent(new WheelEvent('wheel', {deltaY: -40, clientX: 600, clientY: 400, bubbles: true}));
-                    await new Promise(resolve => setTimeout(resolve, 30));
-                }
-            }
-            await map.once('idle');
-            return {updates, zoom: map.getZoom()};
-        }, movement);
-        expect(results.zoom).toBeGreaterThan(7.5);
-        expect(results.updates.length).toBeGreaterThan(5);
-        expect(Math.max(...results.updates)).toBeLessThan(1e-6);
-    });
-
     test('Contextmenu event triggered during scrollzoom', {retry: 3, timeout: 20000}, async () => {
         const contextMenuEventFired = await page.evaluate(() => {
             return new Promise<string>((resolve, _reject) => {
@@ -368,7 +101,7 @@ describe('Browser tests', () => {
         const firstFiredEvent = await page.evaluate(() => {
             const map2 = new maplibregl.Map({
                 container: 'map',
-                style: 'https://demotiles.maplibre.org/style.json',
+                style: {version: 8, sources: {}, layers: [{id: 'background', type: 'background', paint: {'background-color': '#72d0f2'}}]},
                 center: [10, 10],
                 zoom: 10
             });
@@ -379,6 +112,43 @@ describe('Browser tests', () => {
             });
         });
         expect(firstFiredEvent).toBe('load');
+    });
+
+    test('Map created in a hidden container resizes when shown, see #8277', {retry: 3, timeout: 20000}, async () => {
+        const dimensions = await page.evaluate(async () => {
+            const host = document.createElement('div');
+            host.style.display = 'none';
+
+            const container = document.createElement('div');
+            container.style.cssText = 'width: 640px; height: 480px';
+            host.append(container);
+            document.body.append(host);
+
+            const hiddenMap = new maplibregl.Map({
+                container,
+                style: {version: 8, sources: {}, layers: []}
+            });
+            const canvas = hiddenMap.getCanvas();
+
+            host.style.display = 'block';
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            const result = {
+                containerWidth: container.clientWidth,
+                containerHeight: container.clientHeight,
+                canvasWidth: canvas.clientWidth,
+                canvasHeight: canvas.clientHeight
+            };
+
+            hiddenMap.remove();
+            host.remove();
+            return result;
+        });
+
+        expect(dimensions.containerWidth).toBe(640);
+        expect(dimensions.containerHeight).toBe(480);
+        expect(dimensions.canvasWidth).toBe(640);
+        expect(dimensions.canvasHeight).toBe(480);
     });
 
     test('Should continue zooming from last mouse position after scroll and flyto, see #2709', {retry: 3, timeout: 20000}, async () => {
@@ -525,39 +295,14 @@ describe('Browser tests', () => {
             map.setStyle({
                 version: 8,
                 sources: {
-                    osm: {
-                        type: 'raster',
-                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                        tileSize: 256,
-                        attribution: '&copy; OpenStreetMap Contributors',
-                        maxzoom: 19
-                    },
-                    // Use a different source for terrain and hillshade layers, to improve render quality
                     terrainSource: {
                         type: 'raster-dem',
-                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-                        tileSize: 256
-                    },
-                    hillshadeSource: {
-                        type: 'raster-dem',
-                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                        tiles: [`${location.origin}/test/integration/assets/tiles/terrain-shading/{z}-{x}-{y}.terrain.png`],
+                        maxzoom: 10,
                         tileSize: 256
                     }
                 },
-                layers: [
-                    {
-                        id: 'osm',
-                        type: 'raster',
-                        source: 'osm'
-                    },
-                    {
-                        id: 'hills',
-                        type: 'hillshade',
-                        source: 'hillshadeSource',
-                        layout: {visibility: 'visible'},
-                        paint: {'hillshade-shadow-color': '#473B24'}
-                    }
-                ],
+                layers: [],
                 terrain: {
                     source: 'terrainSource',
                     exaggeration: 1
@@ -579,7 +324,7 @@ describe('Browser tests', () => {
         });
 
         expect(markerScreenPosition.x).toBeCloseTo(386.5);
-        expect(markerScreenPosition.y).toBeCloseTo(378.1);
+        expect(markerScreenPosition.y).toBeCloseTo(377.5);
     });
 
     test('Fullscreen control should work in shadowdom as well', {retry: 3, timeout: 20000}, async () => {
@@ -610,10 +355,9 @@ describe('Browser tests', () => {
                             version: 8,
                             sources: {
                                 osm: {
-                                    attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>',
                                     type: 'raster',
                                     tileSize: 256,
-                                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png']
+                                    tiles: [`${location.origin}/test/integration/assets/tiles/number/{z}.png`]
                                 }
                             },
                             layers: [{
@@ -652,14 +396,13 @@ describe('Browser tests', () => {
                 sources: {
                     osm: {
                         type: 'raster',
-                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tiles: [`${location.origin}/test/integration/assets/tiles/number/{z}.png`],
                         tileSize: 256,
-                        attribution: '&copy; OpenStreetMap Contributors',
                         maxzoom: 19
                     },
                     terrainSource: {
                         type: 'raster-dem',
-                        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                        tiles: [`${location.origin}/test/integration/assets/tiles/zero-elevation-terrain-tile.png`],
                         tileSize: 256
                     }
                 },
@@ -715,7 +458,8 @@ describe('Browser tests', () => {
                     sources: {
                         terrainSource: {
                             type: 'raster-dem',
-                            url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+                            tiles: [`${location.origin}/test/integration/assets/tiles/terrain-shading/{z}-{x}-{y}.terrain.png`],
+                            maxzoom: 10,
                             tileSize: 256
                         },
                     },

@@ -690,8 +690,7 @@ export function projectTileCoordinatesToLabelPlane(x: number, y: number, project
     const translatedY = y + projectionContext.translation[1];
     let projection;
     if (projectionContext.pitchWithMap) {
-        const position = projectionContext.transform.projectTileCoordinatesToPlane?.(translatedX, translatedY, projectionContext.unwrappedTileID) ?? new Point(translatedX, translatedY);
-        projection = projectWithMatrix(position.x, position.y, projectionContext.pitchedLabelPlaneMatrix, elevationAt(projectionContext, translatedX, translatedY));
+        projection = projectWithMatrix(translatedX, translatedY, projectionContext.pitchedLabelPlaneMatrix, elevationAt(projectionContext, translatedX, translatedY));
         projection.isOccluded = false;
     } else {
         projection = projectionContext.transform.projectTileCoordinates(translatedX, translatedY, projectionContext.unwrappedTileID, elevationAt(projectionContext, translatedX, translatedY));
@@ -707,7 +706,7 @@ function projectFromLabelPlaneToClipSpace(x: number, y: number, projectionContex
         vec4.transformMat4(pos, pos, pitchedLabelPlaneMatrixInverse);
         const tileX = pos[0] / pos[3];
         const tileY = pos[1] / pos[3];
-        return projectPlanarTileCoordinates(projectionContext.transform, tileX, tileY, projectionContext.unwrappedTileID, elevationAt(projectionContext, tileX, tileY)).point;
+        return projectionContext.transform.projectTileCoordinates(tileX, tileY, projectionContext.unwrappedTileID, elevationAt(projectionContext, tileX, tileY)).point;
     } else {
         return {
             x: (x / projectionContext.width) * 2.0 - 1.0,
@@ -722,11 +721,6 @@ function projectFromLabelPlaneToClipSpace(x: number, y: number, projectionContex
 export function projectTileCoordinatesToClipSpace(x: number, y: number, projectionContext: SymbolProjectionContext): PointProjection {
     const projection = projectionContext.transform.projectTileCoordinates(x, y, projectionContext.unwrappedTileID, elevationAt(projectionContext, x, y));
     return projection;
-}
-
-/** Projects glyph layout coordinates with the projection's planar text camera when one is available. */
-export function projectPlanarTileCoordinates(transform: IReadonlyTransform, x: number, y: number, tileID: UnwrappedTileID, elevation?: number): PointProjection {
-    return transform.projectPlanarTileCoordinates?.(x, y, tileID, elevation) ?? transform.projectTileCoordinates(x, y, tileID, elevation);
 }
 
 /**
@@ -964,7 +958,7 @@ export function projectPathSpecialProjection(projectedPath: Point[], projectionC
     fastInvertSkewMat4(inverseLabelPlaneMatrix, projectionContext.pitchedLabelPlaneMatrix);
     return projectedPath.map(p => {
         const backProjected = projectWithMatrix(p.x, p.y, inverseLabelPlaneMatrix, elevationAt(projectionContext, p.x, p.y));
-        const projected = projectPlanarTileCoordinates(projectionContext.transform,
+        const projected = projectionContext.transform.projectTileCoordinates(
             backProjected.point.x,
             backProjected.point.y,
             projectionContext.unwrappedTileID,
