@@ -66,7 +66,8 @@ export class CircleStyleLayer extends StyleLayer {
         let transformedPolygon: Point[];
         let transformedSize: number;
         if (pitchAlignment === 'map') {
-            transformedPolygon = translatedPolygon;
+            transformedPolygon = transform.projectTileCoordinatesToPlane ?
+                translatedPolygon.map(point => transform.projectTileCoordinatesToPlane(point.x, point.y, unwrappedTileID)) : translatedPolygon;
             transformedSize = size * pixelsToTileUnits;
         } else {
             transformedPolygon = projectQueryGeometry(translatedPolygon, transform, unwrappedTileID, getElevation);
@@ -84,4 +85,3 @@ export class CircleStyleLayer extends StyleLayer {
         }, geometry);
     }
 }
-

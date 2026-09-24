@@ -1,12 +1,12 @@
 {
-  "maplibreBaseCommit": "73a39c4460e53f720d12f001b5b2c4c4e0d8cabc",
-  "styleSpecBaseCommit": "187f3c3633a9dd5b37148c1ca2686b438f8f7946",
-  "includesUncommittedEqualEarthChanges": true,
+  "maplibreBaseCommit": "c2031bfb2bf54ee866fcb68bad5b149646a2f4b1",
+  "styleSpecBaseCommit": "6b8e39d3bcd9bb324dc543ac2e9121f1008c1c84",
+  "includesUncommittedEqualEarthChanges": false,
   "sha256": {
-    "dist/maplibre-gl.mjs": "2ab2876b15c241b0f53201cb5c418761abe13be5249ced9f14022960fd7b16bc",
-    "dist/maplibre-gl-shared.mjs": "8f2e1d0bbff72196dd3207e55ecca4eb666048260c42d24b2e771e55da8c33b0",
-    "dist/maplibre-gl-worker.mjs": "0f22568ac9b18a3eaf5c3682c488c01309ba9e9e1a694679b04076d7716d9753",
-    "dist/maplibre-gl.css": "8e2dbbab312dc57656fbb76e9fa5308c75c9d7c7ba5808a7d55bcdb64cc813fa"
+    "dist/maplibre-gl.mjs": "d8f0fc8e8e178445142e1aa130794a57babd27d7bb269af167c7e8b64d9c386f",
+    "dist/maplibre-gl-shared.mjs": "f0564091e8cffdc369c32458c3c3f4725d71824026af9b2099d66806ce2828fc",
+    "dist/maplibre-gl-worker.mjs": "9b59b123156783b3abc6d2d83f1ff02699a87ffd058557bbf22a62123de4dcac",
+    "dist/maplibre-gl.css": "d8617d8421930e3fc6185365400e788c374c1a5d9fbe87999998c0bc14a202d3"
   },
   "modes": [
     "adaptive",

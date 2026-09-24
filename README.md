@@ -26,7 +26,7 @@ The repository contains the full MapLibre GL JS and style-spec source snapshots 
 
 - [MapLibre GL JS source](maplibre-gl-js/), including projection code, shaders, tests, and render fixtures.
 - [Style-spec source](maplibre-style-spec/), including the Equal Earth documentation and validation tests.
-- [Review the Equal Earth changes](https://github.com/birkskyum/maplibre-gl-js-equal-earth/compare/6e0ad2d990e3857f2a742b5957b2611f79f061d5...main).
+- [Review the Equal Earth changes](https://github.com/birkskyum/maplibre-gl-js-equal-earth/compare/bcdf2473f3ae97def05034106a70c6a4f192ee5a...main).
 
 The upstream source snapshots were imported in a separate baseline commit, followed by the feature changes. [source-info.json](source-info.json) records the original upstream commits. Each source directory retains its own license.
 

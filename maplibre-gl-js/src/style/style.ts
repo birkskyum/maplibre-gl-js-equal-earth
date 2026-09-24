@@ -38,6 +38,7 @@ import {
     type GetImagesParameters,
     type GetImagesResponse
 } from '../util/actor_messages.ts';
+import {EqualEarthProjection} from '../geo/projection/equal_earth_projection.ts';
 import {createProjectionFromName} from '../geo/projection/projection_factory.ts';
 
 import type {Source} from '../source/source.ts';
@@ -1756,6 +1757,12 @@ export class Style extends Evented<MapEventType> {
         this.stylesheet.projection = projection;
         if (this.projection) {
             if (this.projection.name === resolvedProjection.type) {
+                if (this.projection instanceof EqualEarthProjection) {
+                    const needsReload = !deepEqual(this.projection.parameters.transition, resolvedProjection.transition) ||
+                        !!this.projection.parameters.center !== !!resolvedProjection.center;
+                    this.projection.setParameters(resolvedProjection);
+                    if (needsReload) for (const manager of Object.values(this.tileManagers)) manager.reload();
+                }
                 return;
             }
             this.projection.destroy();
@@ -1804,7 +1811,7 @@ export class Style extends Evented<MapEventType> {
     }
 
     _setProjectionInternal(name: ProjectionSpecification['type']): void {
-        const projectionObjects = createProjectionFromName(name, this.map._camera?.transform.constrainOverride, this._globalState);
+        const projectionObjects = createProjectionFromName(name, this.map._camera?.transform.constrainOverride, this._globalState, this.stylesheet.projection);
         this.projection = projectionObjects.projection;
         this.map.migrateProjection(projectionObjects.transform, projectionObjects.cameraHelper);
         for (const key in this.tileManagers) {

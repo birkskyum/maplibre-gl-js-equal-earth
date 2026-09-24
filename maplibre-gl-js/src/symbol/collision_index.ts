@@ -7,7 +7,7 @@ import {GridIndex} from './grid_index.ts';
 import {mat4, vec4} from 'gl-matrix';
 import {clamp, getAABB} from '../util/util.ts';
 import {Bounds} from '../geo/bounds.ts';
-import {type PointProjection, type SymbolProjectionContext, getTileSkewVectors, pathSlicedToLongestUnoccluded, placeFirstAndLastGlyph, projectPathSpecialProjection, xyTransformMat4} from '../symbol/projection.ts';
+import {type PointProjection, type SymbolProjectionContext, getTileSkewVectors, pathSlicedToLongestUnoccluded, placeFirstAndLastGlyph, projectPathSpecialProjection, projectPlanarTileCoordinates, xyTransformMat4} from '../symbol/projection.ts';
 import ONE_EM from '../symbol/one_em.ts';
 
 import type {IReadonlyTransform, GetElevation} from '../geo/transform_interface.ts';
@@ -571,6 +571,11 @@ export class CollisionIndex {
             // Configuration for tile space (map-pitch-aligned) offsets
             basePointX = translatedAnchorX;
             basePointY = translatedAnchorY;
+            const planarAnchor = this.transform.projectTileCoordinatesToPlane?.(translatedAnchorX, translatedAnchorY, unwrappedTileID);
+            if (planarAnchor) {
+                basePointX = planarAnchor.x;
+                basePointY = planarAnchor.y;
+            }
 
             const zoomFraction = this.transform.zoom - tileID.overscaledZ;
             distanceMultiplier = Math.pow(2, -zoomFraction);
@@ -631,7 +636,16 @@ export class CollisionIndex {
         let anyPointVisible = false;
 
         if (pitchWithMap) {
-            const projected = points.map(p => this.projectAndGetPerspectiveRatio(p.x, p.y, unwrappedTileID, getSymbolElevation(getElevation, p.x, p.y, heightOffset, heightAnchorGround), simpleProjectionMatrix));
+            const projected = points.map(p => {
+                const elevation = getSymbolElevation(getElevation, p.x, p.y, heightOffset, heightAnchorGround);
+                if (!this.transform.projectPlanarTileCoordinates) return this.projectAndGetPerspectiveRatio(p.x, p.y, unwrappedTileID, elevation, simpleProjectionMatrix);
+                const projection = projectPlanarTileCoordinates(this.transform, p.x, p.y, unwrappedTileID, elevation);
+                return {
+                    x: (projection.point.x + 1) * this.transform.width / 2 + viewportPadding,
+                    y: (1 - projection.point.y) * this.transform.height / 2 + viewportPadding,
+                    isOccluded: projection.isOccluded
+                };
+            });
 
             // Is at least one of the projected points NOT behind the horizon?
             anyPointVisible = projected.some(p => !p.isOccluded);

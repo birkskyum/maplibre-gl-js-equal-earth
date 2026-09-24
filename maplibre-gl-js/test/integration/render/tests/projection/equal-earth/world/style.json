@@ -1,0 +1,100 @@
+{
+  "version": 8,
+  "metadata": {
+    "test": {
+      "width": 600,
+      "height": 360
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "zoom": 0,
+  "projection": {
+    "type": "equal-earth"
+  },
+  "glyphs": "local://glyphs/{fontstack}/{range}.pbf",
+  "sources": {
+    "grid": {
+      "type": "geojson",
+      "data": "local://geojson/equal-earth.json"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#dbeaf0"
+      }
+    },
+    {
+      "id": "fill",
+      "type": "fill",
+      "source": "grid",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "paint": {
+        "fill-color": "#d58b53",
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "grid",
+      "type": "line",
+      "source": "grid",
+      "filter": [
+        "==",
+        "$type",
+        "LineString"
+      ],
+      "paint": {
+        "line-color": "#567e90",
+        "line-width": 1.5
+      }
+    },
+    {
+      "id": "circle",
+      "type": "circle",
+      "source": "grid",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "paint": {
+        "circle-color": "#963f38",
+        "circle-radius": 5
+      }
+    },
+    {
+      "id": "labels",
+      "type": "symbol",
+      "source": "grid",
+      "filter": [
+        "==",
+        "$type",
+        "Point"
+      ],
+      "layout": {
+        "text-field": "{label}",
+        "text-font": [
+          "Open Sans Semibold",
+          "Arial Unicode MS Bold"
+        ],
+        "text-size": 14,
+        "text-offset": [
+          0,
+          1.2
+        ]
+      },
+      "paint": {
+        "text-color": "#102e42"
+      }
+    }
+  ]
+}

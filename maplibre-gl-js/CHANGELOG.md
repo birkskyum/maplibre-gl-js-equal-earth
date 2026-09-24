@@ -1,5 +1,7 @@
 ## main
 ### ✨ Features and improvements
+- Add `equal-earth` with an adaptive Mercator transition, a fixed mode and movable projection origins ([#8330](https://github.com/maplibre/maplibre-gl-js/issues/8330)).
+- Reuse terrain resources and preserve camera elevation during gestures and flights when updating terrain exaggeration.
 - Improve rendering performance by uploading each tile's projection data once per frame instead of before every draw call ([#8545](https://github.com/maplibre/maplibre-gl-js/pull/8545)) (by [@birkskyum](https://github.com/birkskyum))
 - _...Add new stuff here..._
 

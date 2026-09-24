@@ -71,6 +71,8 @@ export type ProjectionData<MainMatrix extends mat4 = mat4, FallbackMatrix extend
      * Uniform name: `u_projection_clip_antimeridian`.
      */
     clipAntimeridian: boolean;
+    /** Equal Earth origin in radians, longitude hemisphere, and physical world copy. */
+    projectionOrigin?: [number, number, number, number];
 };
 
 /**

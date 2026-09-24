@@ -35,7 +35,7 @@ export function createRenderContext(transform: IReadonlyTransform, projection: P
         transform,
         terrain,
         projectionTransition,
-        isRenderingGlobe: projectionTransition > 0
+        isRenderingGlobe: projectionTransition > 0 && projection?.name !== 'equal-earth'
     };
 }
 

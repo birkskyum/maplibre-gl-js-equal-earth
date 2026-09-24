@@ -80,8 +80,8 @@ void main() {
     mediump vec2 offset2 = offset * a_extrude * scale * normal.y * mat2(t, -u, u, t);
 
     float adjustedThickness = projectLineThickness(pos.y);
-    vec4 projected_no_extrude = projectTile(pos + offset2 / u_ratio * adjustedThickness + u_translation);
-    vec4 projected_with_extrude = projectTile(pos + offset2 / u_ratio * adjustedThickness + u_translation + dist / u_ratio * adjustedThickness);
+    vec4 projected_no_extrude = projectLineTile(pos + u_translation, offset2 / u_ratio * adjustedThickness);
+    vec4 projected_with_extrude = projectLineTile(pos + u_translation, (offset2 + dist) / u_ratio * adjustedThickness);
     gl_Position = projected_with_extrude;
     #ifdef GLOBE
     v_depth = gl_Position.z / gl_Position.w;

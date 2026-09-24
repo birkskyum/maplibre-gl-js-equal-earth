@@ -4,6 +4,7 @@ import {terrainPreludeUniforms, type TerrainPreludeUniformsType} from './program
 import {applyUBOBindings} from './uniform_buffer.ts';
 import {bindProjectionUniformBuffer} from './projection_uniform_buffer.ts';
 import {updateTerrainUniformBuffer} from './terrain_uniform_buffer.ts';
+import {StencilMode} from './stencil_mode.ts';
 
 import type {ProgramConfiguration} from '../data/program_configuration.ts';
 import type {Context} from './context.ts';
@@ -11,7 +12,6 @@ import type {SegmentVector} from '../data/segment.ts';
 import type {VertexBuffer} from './vertex_buffer.ts';
 import type {IndexBuffer} from './index_buffer.ts';
 import type {DepthMode} from './depth_mode.ts';
-import type {StencilMode} from './stencil_mode.ts';
 import type {ColorMode} from './color_mode.ts';
 import type {CullFaceMode} from './cull_face_mode.ts';
 import type {UniformBindings, UniformValues, UniformLocations} from './uniform_binding.ts';
@@ -108,7 +108,9 @@ export class Program<Us extends UniformBindings> {
             defines.push(...extraDefines);
         }
 
-        const fragmentSource = defines.concat(shaders.prelude.fragmentSource, projectionPrelude.fragmentSource, source.fragmentSource).join('\n');
+        const clipEqualEarth = projectionDefine?.includes('EQUAL_EARTH') && /\bproject(?:Tile|LineTile|PlanarTile)\w*\(/.test(source.vertexSource);
+        const layerFragment = clipEqualEarth ? source.fragmentSource.replace(/void main\s*\(\s*(?:void)?\s*\)\s*\{/, 'void main() {clipEqualEarth();') : source.fragmentSource;
+        const fragmentSource = defines.concat(shaders.prelude.fragmentSource, projectionPrelude.fragmentSource, layerFragment).join('\n');
         const vertexSource = defines.concat(shaders.prelude.vertexSource, projectionPrelude.vertexSource, source.vertexSource).join('\n');
 
         const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
@@ -208,7 +210,7 @@ export class Program<Us extends UniformBindings> {
         context.terrainUniformBuffer.bind();
         context.frameUniformBuffer.bind();
         context.setDepthMode(depthMode);
-        context.setStencilMode(stencilMode);
+        context.setStencilMode(projectionData?.projectionOrigin && stencilMode.test.func === gl.EQUAL ? StencilMode.disabled : stencilMode);
         context.setColorMode(colorMode);
         context.setCullFace(cullFaceMode);
 

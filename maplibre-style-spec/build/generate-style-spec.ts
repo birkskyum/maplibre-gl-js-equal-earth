@@ -55,6 +55,8 @@ function propertyType(property, key?) {
             case 'number':
             case 'boolean':
                 return property.type;
+            case 'projectionTransition':
+                return 'false | [number, number]';
             case 'enum':
                 return unionType(property.values);
             case 'array': {

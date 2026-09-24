@@ -101,7 +101,7 @@ void main() {
     if (u_is_along_line || u_is_variable_anchor) {
         projected_pos = vec4(a_projected_pos.xy, ele, 1.0);
     } else if (u_pitch_with_map) {
-        projected_pos = u_label_plane_matrix * vec4(a_projected_pos.xy + u_translation, ele, 1.0);
+        projected_pos = u_label_plane_matrix * vec4(projectTileToPlane(a_projected_pos.xy + u_translation), ele, 1.0);
     } else {
         projected_pos = u_label_plane_matrix * projectTileWithElevation(a_projected_pos.xy + u_translation, ele);
     }
@@ -118,7 +118,7 @@ void main() {
 
     vec4 finalPos = u_coord_matrix * vec4(projected_pos.xy / projected_pos.w + rotation_matrix * (a_offset / 32.0 * max(a_minFontScale, fontScale) + a_pxoffset / 16.0) * projectionScaling, z, 1.0);
     if(u_pitch_with_map) {
-        finalPos = projectTileWithElevation(finalPos.xy, finalPos.z);
+        finalPos = projectPlanarTile(finalPos.xy, finalPos.z);
     }
     gl_Position = finalPos;
 

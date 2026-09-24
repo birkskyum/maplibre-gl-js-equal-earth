@@ -1,5 +1,6 @@
 ## main
 ### ✨ Features and improvements
+- Define the adaptive `equal-earth` projection, which transitions to Mercator between zoom 6 and 7 in GL JS ([maplibre-gl-js#8330](https://github.com/maplibre/maplibre-gl-js/issues/8330)).
 - _...Add new stuff here..._
 
 ### 🐞 Bug fixes

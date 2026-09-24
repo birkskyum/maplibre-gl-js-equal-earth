@@ -56,6 +56,8 @@ void main(void) {
     vec3 center_vector = projectToSphere(circle_center);
     vec3 corner_vector = globeRotateVector(center_vector, angles);
     gl_Position = interpolateProjection(circle_center + extrude, corner_vector, 0.0);
+#elif defined EQUAL_EARTH
+    gl_Position = projectPlanarTile(projectTileToPlane(circle_center) + extrude, get_elevation(circle_center));
 #else
     gl_Position = projectTileFor3D(circle_center + extrude, get_elevation(circle_center));
 #endif

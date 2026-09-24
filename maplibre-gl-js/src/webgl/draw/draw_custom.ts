@@ -9,13 +9,12 @@ import type {CustomLayerProjectionDataParams, CustomRenderMethodInput, CustomSty
 
 export function drawCustom(painter: Painter, tileManager: TileManager, layer: CustomStyleLayer, renderContext: RenderContext): void {
 
-    const {isRenderingGlobe} = renderContext;
     const context = painter.context;
     const implementation = layer.implementation;
     const projection = painter.style.projection;
     const transform = painter.transform;
 
-    const projectionData = transform.getProjectionDataForCustomLayer(isRenderingGlobe);
+    const projectionData = transform.getProjectionDataForCustomLayer(projection.transitionState > 0);
 
     const customLayerArgs: CustomRenderMethodInput = {
         farZ: transform.farZ,
