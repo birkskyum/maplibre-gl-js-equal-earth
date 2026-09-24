@@ -172,6 +172,15 @@ describe('adaptive Equal Earth', () => {
         }
     });
 
+    test('covers tiles around a pole at high pitch', () => {
+        const transform = new EqualEarthTransform({maxPitch: 85});
+        transform.resize(800, 600);
+        transform.setZoom(4);
+        transform.setCenter(new LngLat(0, -90));
+        transform.setPitch(70);
+        expect(coveringTiles(transform, {tileSize: 512})).toHaveLength(8);
+    });
+
     test('matches Mercator projection and terrain data after the transition', () => {
         const transform = new EqualEarthTransform();
         transform.resize(800, 600);

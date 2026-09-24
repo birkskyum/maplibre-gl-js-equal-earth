@@ -3,8 +3,8 @@
   "styleSpecBaseCommit": "187f3c3633a9dd5b37148c1ca2686b438f8f7946",
   "includesUncommittedEqualEarthChanges": true,
   "sha256": {
-    "dist/maplibre-gl.mjs": "8c53f1fcd58fe150bbac3e5b0a435898995b68c079f419fb957cdee00efd0bd3",
-    "dist/maplibre-gl-shared.mjs": "f38e44833d050f37e43e81672b4be6df9d0d8bed45b9d1aa942a1bed7d8e720c",
+    "dist/maplibre-gl.mjs": "2ab2876b15c241b0f53201cb5c418761abe13be5249ced9f14022960fd7b16bc",
+    "dist/maplibre-gl-shared.mjs": "8f2e1d0bbff72196dd3207e55ecca4eb666048260c42d24b2e771e55da8c33b0",
     "dist/maplibre-gl-worker.mjs": "0f22568ac9b18a3eaf5c3682c488c01309ba9e9e1a694679b04076d7716d9753",
     "dist/maplibre-gl.css": "8e2dbbab312dc57656fbb76e9fa5308c75c9d7c7ba5808a7d55bcdb64cc813fa"
   },

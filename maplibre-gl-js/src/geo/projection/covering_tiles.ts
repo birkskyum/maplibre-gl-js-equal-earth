@@ -1,7 +1,8 @@
 import {OverscaledTileID} from '../../tile/tile_id.ts';
 import {vec2, type vec4} from 'gl-matrix';
 import {MercatorCoordinate} from '../mercator_coordinate.ts';
-import {clamp, degreesToRadians, scaleZoom} from '../../util/util.ts';
+import {LngLat} from '../lng_lat.ts';
+import {clamp, degreesToRadians, MAX_VALID_LATITUDE, scaleZoom} from '../../util/util.ts';
 
 import type {IReadonlyTransform} from '../transform_interface.ts';
 import type {Terrain} from '../../render/terrain.ts';
@@ -205,6 +206,8 @@ function getElevationForTileCulling(transform: IReadonlyTransform): number {
 /**
  * Returns a list of tiles that optimally covers the screen. Adapted for globe projection.
  * Correctly handles LOD when moving over the antimeridian.
+ * Distances are measured from the center clamped to Mercator's latitude range, where a projection
+ * that can center on a pole still places its camera.
  * @param transform - The transform instance.
  * @param frustum - The covering frustum.
  * @param plane - The clipping plane used by globe transform, or null.
@@ -217,8 +220,9 @@ function getElevationForTileCulling(transform: IReadonlyTransform): number {
 export function coveringTiles(transform: IReadonlyTransform, options: CoveringTilesOptionsInternal): OverscaledTileID[] {
     const frustum = transform.getCameraFrustum();
     const plane = transform.getClippingPlane();
-    const cameraCoord = cameraMercatorCoordinate(transform);
-    const centerCoord = MercatorCoordinate.fromLngLat(transform.center, transform.elevation);
+    const center = new LngLat(transform.center.lng, clamp(transform.center.lat, -MAX_VALID_LATITUDE, MAX_VALID_LATITUDE));
+    const cameraCoord = cameraMercatorCoordinate(transform, center);
+    const centerCoord = MercatorCoordinate.fromLngLat(center, transform.elevation);
     const elevationForTileCulling = getElevationForTileCulling(transform);
     const detailsProvider = transform.getCoveringTilesDetailsProvider();
     const allowVariableZoom = detailsProvider.allowVariableZoom(transform, options);

@@ -211,7 +211,7 @@ export class TransformHelper implements ITransformGetters {
         this._maxZoom = thatI.maxZoom;
         this._minPitch = thatI.minPitch;
         this._maxPitch = thatI.maxPitch;
-        this._renderWorldCopies = thatI.renderWorldCopies;
+        this._renderWorldCopies = thatI.renderWorldCopiesSetting ?? thatI.renderWorldCopies;
         this._cameraToCenterDistance = thatI.cameraToCenterDistance;
         this._nearZ = thatI.nearZ;
         this._farZ = thatI.farZ;

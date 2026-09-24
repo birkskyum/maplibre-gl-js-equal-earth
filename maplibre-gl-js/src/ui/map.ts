@@ -1977,7 +1977,10 @@ export class Map extends Evented<MapEventType> {
      * ```
      * @see [Render world copies](https://maplibre.org/maplibre-gl-js/docs/examples/render-world-copies/)
      */
-    getRenderWorldCopies(): boolean { return this._camera.transform.renderWorldCopies; }
+    getRenderWorldCopies(): boolean {
+        const transform = this._camera.transform;
+        return transform.renderWorldCopiesSetting ?? transform.renderWorldCopies;
+    }
 
     /**
      * Sets the state of `renderWorldCopies`.

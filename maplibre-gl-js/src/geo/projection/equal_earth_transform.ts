@@ -12,7 +12,7 @@ import {EXTENT} from '../../data/extent.ts';
 import {UnwrappedTileID, OverscaledTileID} from '../../tile/tile_id.ts';
 
 import type {TransformOptions} from '../transform_helper.ts';
-import type {IReadonlyTransform, ITransform} from '../transform_interface.ts';
+import type {ITransform} from '../transform_interface.ts';
 import type {Terrain} from '../../render/terrain.ts';
 import type {CanonicalTileID} from '../../tile/tile_id.ts';
 import type {PointProjection} from '../../symbol/projection.ts';
@@ -48,6 +48,7 @@ export class EqualEarthTransform extends MercatorTransform {
 
     get transitionState(): number { return equalEarthTransition(this.zoom, this.parameters.transition); }
     get renderWorldCopies(): boolean { return this.hasOrigin || (this.transitionState === 0 && super.renderWorldCopies); }
+    get renderWorldCopiesSetting(): boolean { return super.renderWorldCopies; }
     get hasOrigin(): boolean { return this.transitionState > 0 && !!this.parameters.center; }
 
     /** Keeps the inherited planar camera finite when a fixed projection is centered on a pole. */
@@ -74,13 +75,6 @@ export class EqualEarthTransform extends MercatorTransform {
         clone.apply(this, false);
         return clone;
     }
-
-    apply(that: IReadonlyTransform, constrain: boolean, forceOverrideZ?: boolean): void {
-        super.apply(that, constrain, forceOverrideZ);
-        if (that instanceof EqualEarthTransform) this.setRenderWorldCopies(that.mercatorWorldCopies);
-    }
-
-    private get mercatorWorldCopies(): boolean { return super.renderWorldCopies; }
 
     /** Small tiles use coordinates relative to their projected midpoint to retain GPU precision at street zooms. */
     private usesLocalCoordinates(tileID?: UnwrappedTileID): boolean {

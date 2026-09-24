@@ -100,6 +100,11 @@ export interface ITransformGetters {
 
     get renderWorldCopies(): boolean;
     /**
+     * The `renderWorldCopies` setting, for a projection whose {@link renderWorldCopies} reports whether
+     * it draws world copies in its current state instead.
+     */
+    readonly renderWorldCopiesSetting?: boolean;
+    /**
      * The distance from the camera to the center of the map in pixels space.
      */
     get cameraToCenterDistance(): number;
